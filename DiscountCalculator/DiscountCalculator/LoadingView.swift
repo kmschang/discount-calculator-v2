@@ -71,7 +71,10 @@ struct LoadingView: View {
     }
     
     private var logoColorName_DiscountCalculator: String {
-        assetName("DiscountCalculatorLogo")
+        discountCalculatorLogoName(
+            appearance: discountCalculatorLogoAppearance(for: colorScheme),
+            color: tintToken
+        )
     }
     
     private var currentAppIconPreviewName: String {
@@ -380,4 +383,3 @@ private struct LoadingPreviewWrapper: View {
     LoadingPreviewWrapper(themeColor: 7)
         .preferredColorScheme(.light)
 }
-

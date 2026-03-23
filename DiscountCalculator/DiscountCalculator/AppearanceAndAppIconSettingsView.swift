@@ -27,14 +27,14 @@ struct AppIconSettingsView: View {
     }
     
     private let options: [AppIconOption] = [
-        AppIconOption(id: "Red",    displayName: "Red",    previewImageNameLight: "DiscountCalculatorLogo(Light)(Red)",    previewImageNameDark: "DiscountCalculatorLogo(Dark)(Red)",    iconName: "RedAppIcon"),
-        AppIconOption(id: "Orange", displayName: "Orange", previewImageNameLight: "DiscountCalculatorLogo(Light)(Orange)", previewImageNameDark: "DiscountCalculatorLogo(Dark)(Orange)", iconName: "OrangeAppIcon"),
-        AppIconOption(id: "Yellow", displayName: "Yellow", previewImageNameLight: "DiscountCalculatorLogo(Light)(Yellow)", previewImageNameDark: "DiscountCalculatorLogo(Dark)(Yellow)", iconName: "YellowAppIcon"),
-        AppIconOption(id: "Green",  displayName: "Green",  previewImageNameLight: "DiscountCalculatorLogo(Light)(Green)",  previewImageNameDark: "DiscountCalculatorLogo(Dark)(Green)",  iconName: "GreenAppIcon"),
-        AppIconOption(id: "Blue",   displayName: "Blue",   previewImageNameLight: "DiscountCalculatorLogo(Light)(Blue)",   previewImageNameDark: "DiscountCalculatorLogo(Dark)(Blue)",   iconName: "BlueAppIcon"),
-        AppIconOption(id: "Purple", displayName: "Purple", previewImageNameLight: "DiscountCalculatorLogo(Light)(Purple)", previewImageNameDark: "DiscountCalculatorLogo(Dark)(Purple)", iconName: "PurpleAppIcon"),
-        AppIconOption(id: "Black",  displayName: "Black",  previewImageNameLight: "DiscountCalculatorLogo(Light)(Black)",  previewImageNameDark: "DiscountCalculatorLogo(Dark)(Black)",  iconName: "BlackAppIcon"),
-        AppIconOption(id: "White",  displayName: "White",  previewImageNameLight: "DiscountCalculatorLogo(Light)(White)",  previewImageNameDark: "DiscountCalculatorLogo(Dark)(White)",  iconName: "WhiteAppIcon")
+        AppIconOption(id: "Red",    displayName: "Red",    previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Red"),    previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Red"),    iconName: "RedAppIcon"),
+        AppIconOption(id: "Orange", displayName: "Orange", previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Orange"), previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Orange"), iconName: "OrangeAppIcon"),
+        AppIconOption(id: "Yellow", displayName: "Yellow", previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Yellow"), previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Yellow"), iconName: "YellowAppIcon"),
+        AppIconOption(id: "Green",  displayName: "Green",  previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Green"),  previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Green"),  iconName: "GreenAppIcon"),
+        AppIconOption(id: "Blue",   displayName: "Blue",   previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Blue"),   previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Blue"),   iconName: "BlueAppIcon"),
+        AppIconOption(id: "Purple", displayName: "Purple", previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Purple"), previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Purple"), iconName: "PurpleAppIcon"),
+        AppIconOption(id: "Black",  displayName: "Black",  previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Black"),  previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Black"),  iconName: "BlackAppIcon"),
+        AppIconOption(id: "White",  displayName: "White",  previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "White"),  previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "White"),  iconName: "WhiteAppIcon")
     ]
     
     private var selectedOption: AppIconOption {

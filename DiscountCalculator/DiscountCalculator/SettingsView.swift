@@ -63,20 +63,10 @@ struct SettingsView: View {
     }
 
     private var currentAppIconPreviewName: String {
-        let baseName: String
-        switch selectedAppIconName {
-        case "Primary": baseName = "DiscountCalculatorLogo(Light)(Blue)"
-        case "BlueAppIcon": baseName = "DiscountCalculatorLogo(Light)(Blue)"
-        case "GreenAppIcon": baseName = "DiscountCalculatorLogo(Light)(Green)"
-        case "OrangeAppIcon": baseName = "DiscountCalculatorLogo(Light)(Orange)"
-        case "PurpleAppIcon": baseName = "DiscountCalculatorLogo(Light)(Purple)"
-        case "RedAppIcon": baseName = "DiscountCalculatorLogo(Light)(Red)"
-        case "WhiteAppIcon": baseName = "DiscountCalculatorLogo(Light)(White)"
-        case "BlackAppIcon": baseName = "DiscountCalculatorLogo(Light)(Black)"
-        case "YellowAppIcon": baseName = "DiscountCalculatorLogo(Light)(Yellow)"
-        default: baseName = "DiscountCalculatorLogo(Light)(Blue)"
-        }
-        return systemColorScheme == .dark ? "\(baseName)_Dark" : baseName
+        discountCalculatorLogoName(
+            appearance: discountCalculatorLogoAppearance(for: systemColorScheme),
+            color: discountCalculatorLogoColor(forAppIconName: selectedAppIconName)
+        )
     }
 
     private var accentColorName: String {

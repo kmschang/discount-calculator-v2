@@ -45,31 +45,18 @@ struct InfoView: View {
         "\(base)(\(appearanceToken))(\(tintToken))"
     }
 
+    private var discountCalculatorLogoAssetName: String {
+        discountCalculatorLogoName(
+            appearance: discountCalculatorLogoAppearance(for: colorScheme),
+            color: tintToken
+        )
+    }
+
     private var currentAppIconPreviewName: String {
-        let baseName: String
-        switch selectedAppIconName {
-        case "Primary":
-            baseName = "BlueAppIconLogoRounded"
-        case "BlueAppIcon":
-            baseName = "BlueAppIconLogoRounded"
-        case "GreenAppIcon":
-            baseName = "GreenAppIconLogoRounded"
-        case "OrangeAppIcon":
-            baseName = "OrangeAppIconLogoRounded"
-        case "PurpleAppIcon":
-            baseName = "PurpleAppIconLogoRounded"
-        case "RedAppIcon":
-            baseName = "RedAppIconLogoRounded"
-        case "WhiteAppIcon":
-            baseName = "WhiteAppIconLogoRounded"
-        case "BlackAppIcon":
-            baseName = "BlackAppIconLogoRounded"
-        case "YellowAppIcon":
-            baseName = "YellowAppIconLogoRounded"
-        default:
-            baseName = "BlueAppIconLogoRounded"
-        }
-        return colorScheme == .dark ? "\(baseName)_Dark" : baseName
+        discountCalculatorLogoName(
+            appearance: discountCalculatorLogoAppearance(for: colorScheme),
+            color: discountCalculatorLogoColor(forAppIconName: selectedAppIconName)
+        )
     }
 
     private let websiteURL = URL(string: "https://www.sonnazgroup.com")
@@ -326,11 +313,11 @@ struct InfoView: View {
                 url: websiteURL,
                 maximumTileWidth: maximumTileWidth
             )
-            logoActionTile(imageName: assetName("DiscountCalculatorLogo"), maximumTileWidth: maximumTileWidth) {
+            logoActionTile(imageName: discountCalculatorLogoAssetName, maximumTileWidth: maximumTileWidth) {
                 showDiscountDestinationOptions = true
             }
             logoLinkTile(
-                imageName: assetName("DiscountCalculatorLogo"),
+                imageName: discountCalculatorLogoAssetName,
                 url: discountCalculatorURL,
                 maximumTileWidth: maximumTileWidth
             )
