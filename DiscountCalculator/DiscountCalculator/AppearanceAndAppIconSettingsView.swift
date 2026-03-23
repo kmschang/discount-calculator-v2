@@ -11,10 +11,16 @@ import UIKit
 // MARK: - App Icon Settings
 
 struct AppIconSettingsView: View {
+    let onDone: (() -> Void)?
+
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
     @Environment(\.dismiss) private var dismiss
     @State private var iconChangeErrorMessage: String?
     @State private var isChangingIcon: Bool = false
+
+    init(onDone: (() -> Void)? = nil) {
+        self.onDone = onDone
+    }
     
     struct AppIconOption: Identifiable {
         let id: String
@@ -100,6 +106,21 @@ struct AppIconSettingsView: View {
         }
         .navigationTitle("App Icon")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    if let onDone {
+                        onDone()
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    Image(systemName: "checkmark")
+                }
+                .tint(.primary)
+                .accessibilityLabel("Done")
+            }
+        }
         .onAppear {
             syncSelectedIconFromSystem()
         }

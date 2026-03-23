@@ -71,6 +71,7 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "info.circle")
                     }
+                    .tint(.primary)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -78,6 +79,7 @@ struct ContentView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .tint(.primary)
                 }
             }
             .sheet(isPresented: $isInfoSheetPresented) {

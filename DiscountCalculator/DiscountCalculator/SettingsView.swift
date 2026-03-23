@@ -114,7 +114,9 @@ struct SettingsView: View {
                     }
 
                     NavigationLink {
-                        AppIconSettingsView()
+                        AppIconSettingsView(onDone: {
+                            dismiss()
+                        })
                     } label: {
                         HStack {
                             Text("App Icon")
@@ -141,8 +143,9 @@ struct SettingsView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: "checkmark")
                     }
+                    .tint(.primary)
                 }
             }
         }

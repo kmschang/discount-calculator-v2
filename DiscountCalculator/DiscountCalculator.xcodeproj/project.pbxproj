@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		27AF079D2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 27AF079C2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		0ED009352DF67DF4004B4CF2 /* Discount Calculator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Discount Calculator.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		27AF079C2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen_Blank.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +37,7 @@
 		0ED0092C2DF67DF4004B4CF2 = {
 			isa = PBXGroup;
 			children = (
+				27AF079C2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard */,
 				0ED009372DF67DF4004B4CF2 /* DiscountCalculator */,
 				0ED009362DF67DF4004B4CF2 /* Products */,
 			);
@@ -109,6 +115,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				27AF079D2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
