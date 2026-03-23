@@ -45,6 +45,14 @@ struct BlankTabOneView: View {
         subtotalAfterDiscount + taxAmount
     }
 
+    private var netChangeAmount: Double {
+        finalAmount - itemAmount
+    }
+
+    private var currencyCode: String {
+        Locale.current.currency?.identifier ?? "USD"
+    }
+
     private var currencyTextColor: Color {
         colorScheme == .dark ? .white : .primary
     }
@@ -103,7 +111,7 @@ struct BlankTabOneView: View {
                 summaryCard
 
                 selectionRow(
-                    title: "Discount",
+                    title: "Discount (-)",
                     selectedValue: selectedDiscountPercent,
                     options: discountOptions
                 ) { value in
@@ -111,7 +119,7 @@ struct BlankTabOneView: View {
                 }
 
                 selectionRow(
-                    title: "Tax",
+                    title: "Tax (+)",
                     selectedValue: selectedTaxPercent,
                     options: taxOptions
                 ) { value in
@@ -132,7 +140,7 @@ struct BlankTabOneView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(secondaryTextColor)
 
-            Text(itemAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+            Text(itemAmount, format: .currency(code: currencyCode))
                 .font(.system(size: 40, weight: .bold, design: .rounded))
                 .foregroundStyle(currencyTextColor)
                 .minimumScaleFactor(0.7)
@@ -145,18 +153,22 @@ struct BlankTabOneView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(secondaryTextColor)
 
-            Text(finalAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+            Text(finalAmount, format: .currency(code: currencyCode))
                 .font(.system(size: 42, weight: .bold, design: .rounded))
                 .foregroundStyle(accentColor)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
 
-            HStack(spacing: 14) {
-                Text("-\(discountAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))")
-                Text("+\(taxAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))")
+            HStack(spacing: 8) {
+                Text("-\(discountAmount, format: .currency(code: currencyCode))")
+                Text("•")
+                Text("+\(taxAmount, format: .currency(code: currencyCode))")
+                Text("•")
+                Text("\(netChangeAmount >= 0 ? "+" : "-")\(abs(netChangeAmount), format: .currency(code: currencyCode))")
             }
             .font(.footnote.weight(.semibold))
             .foregroundStyle(secondaryTextColor)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -181,22 +193,16 @@ struct BlankTabOneView: View {
                         Button {
                             action(value)
                         } label: {
-                            Text(value, format: .number.precision(.fractionLength(value.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2)))
+                            Text("\(formatPercent(value))%")
                                 .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(value == selectedValue ? accentColor : currencyTextColor)
                                 .frame(minWidth: 56)
                                 .padding(.vertical, 8)
                                 .padding(.horizontal, 10)
-                                .overlay(alignment: .trailing) {
-                                    if value == selectedValue {
-                                        Text("%")
-                                            .font(.caption2.weight(.bold))
-                                            .foregroundStyle(accentColor.opacity(0.75))
-                                            .offset(x: 4)
-                                    }
-                                }
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .contentShape(Rectangle())
                         .calculatorPillGlass(accentColor: accentColor, isEmphasized: value == selectedValue)
                     }
                 }
@@ -218,9 +224,11 @@ struct BlankTabOneView: View {
                                 .foregroundStyle(currencyTextColor)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 62)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .calculatorPillGlass(accentColor: accentColor, isEmphasized: key == .digit("0"))
+                        .contentShape(Rectangle())
+                        .calculatorPillGlass(accentColor: accentColor)
                     }
                 }
             }
@@ -230,7 +238,7 @@ struct BlankTabOneView: View {
     private func handle(_ key: CalculatorKey) {
         switch key {
         case .digit(let value):
-            guard rawDigits.count < 9 else { return }
+            guard rawDigits.count < 12 else { return }
             rawDigits.append(value)
         case .clear:
             rawDigits = ""
@@ -238,6 +246,10 @@ struct BlankTabOneView: View {
             guard !rawDigits.isEmpty else { return }
             rawDigits.removeLast()
         }
+    }
+
+    private func formatPercent(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(value.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2)))
     }
 }
 
