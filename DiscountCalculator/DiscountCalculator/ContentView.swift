@@ -11,7 +11,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var systemColorScheme
 
     enum Tab: String, Hashable {
-        case tab1 = "Tab 1"
+        case tab1 = "Calculator"
         case tab2 = "Tab 2"
         case tab3 = "Tab 3"
     }
@@ -50,7 +50,7 @@ struct ContentView: View {
         NavigationStack {
             TabView(selection: $selectedTab) {
                 BlankTabOneView()
-                    .tabItem { Label("Tab 1", systemImage: "1.circle") }
+                    .tabItem { Label("Calculator", systemImage: "plus.forwardslash.minus") }
                     .tag(Tab.tab1)
 
                 BlankTabTwoView()
