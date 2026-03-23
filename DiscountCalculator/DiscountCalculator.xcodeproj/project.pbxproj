@@ -11,9 +11,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		0ED009372DF67DF4004B4CF2 /* Discount Calculator */ = {
+		0ED009372DF67DF4004B4CF2 /* DiscountCalculator */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Discount Calculator";
+			path = DiscountCalculator;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -32,7 +32,7 @@
 		0ED0092C2DF67DF4004B4CF2 = {
 			isa = PBXGroup;
 			children = (
-				0ED009372DF67DF4004B4CF2 /* Discount Calculator */,
+				0ED009372DF67DF4004B4CF2 /* DiscountCalculator */,
 				0ED009362DF67DF4004B4CF2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -61,7 +61,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				0ED009372DF67DF4004B4CF2 /* Discount Calculator */,
+				0ED009372DF67DF4004B4CF2 /* DiscountCalculator */,
 			);
 			name = "Discount Calculator";
 			packageProductDependencies = (
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 0ED009302DF67DF4004B4CF2 /* Build configuration list for PBXProject "Discount Calculator" */;
+			buildConfigurationList = 0ED009302DF67DF4004B4CF2 /* Build configuration list for PBXProject "DiscountCalculator" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -313,7 +313,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0ED009302DF67DF4004B4CF2 /* Build configuration list for PBXProject "Discount Calculator" */ = {
+		0ED009302DF67DF4004B4CF2 /* Build configuration list for PBXProject "DiscountCalculator" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0ED0093E2DF67DF6004B4CF2 /* Debug */,
