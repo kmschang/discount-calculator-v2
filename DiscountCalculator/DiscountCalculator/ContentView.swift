@@ -49,8 +49,8 @@ struct ContentView: View {
     private var mainAppView: some View {
         NavigationStack {
             TabView(selection: $selectedTab) {
-                BlankTabOneView()
-                    .tabItem { Label("Calculator", systemImage: "plus.forwardslash.minus") }
+                CalculatorView()
+                    .tabItem { Label("Calculator", systemImage: "percent") }
                     .tag(Tab.tab1)
 
                 BlankTabTwoView()

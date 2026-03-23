@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct BlankTabOneView: View {
+struct CalculatorView: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("themeColor") private var themeColor: Int = 7
 
@@ -43,6 +43,10 @@ struct BlankTabOneView: View {
 
     private var finalAmount: Double {
         subtotalAfterDiscount + taxAmount
+    }
+
+    private var savingsAmount: Double {
+        discountAmount
     }
 
     private var netChangeAmount: Double {
@@ -107,71 +111,94 @@ struct BlankTabOneView: View {
                 .blur(radius: 90)
                 .offset(x: 170, y: 260)
 
-            VStack(spacing: 16) {
-                summaryCard
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 14) {
+                    amountStackCard
+                    quickStatsRow
 
-                selectionRow(
-                    title: "Discount (-)",
-                    selectedValue: selectedDiscountPercent,
-                    options: discountOptions
-                ) { value in
-                    selectedDiscountPercent = value
+                    selectionRow(
+                        title: "Discount",
+                        selectedValue: selectedDiscountPercent,
+                        options: discountOptions
+                    ) { value in
+                        selectedDiscountPercent = value
+                    }
+
+                    selectionRow(
+                        title: "Tax",
+                        selectedValue: selectedTaxPercent,
+                        options: taxOptions
+                    ) { value in
+                        selectedTaxPercent = value
+                    }
+
+                    breakdownCard
+                    keypad
                 }
-
-                selectionRow(
-                    title: "Tax (+)",
-                    selectedValue: selectedTaxPercent,
-                    options: taxOptions
-                ) { value in
-                    selectedTaxPercent = value
-                }
-
-                keypad
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Item Amount")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(secondaryTextColor)
-
-            Text(itemAmount, format: .currency(code: currencyCode))
-                .font(.system(size: 40, weight: .bold, design: .rounded))
-                .foregroundStyle(currencyTextColor)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
+    private var amountStackCard: some View {
+        VStack(spacing: 10) {
+            amountTier(
+                title: "Original Amount",
+                value: itemAmount,
+                emphasis: .secondary
+            )
 
             Divider()
-                .overlay(accentColor.opacity(0.45))
+                .overlay(accentColor.opacity(0.4))
 
-            Text("Final")
+            amountTier(
+                title: "Final Amount",
+                value: finalAmount,
+                emphasis: .accent
+            )
+        }
+        .padding(16)
+        .calculatorPillGlass(accentColor: accentColor, isEmphasized: true)
+    }
+
+    private var quickStatsRow: some View {
+        HStack(spacing: 10) {
+            compactStatPill(title: "Savings", value: savingsAmount, tint: .green)
+            compactStatPill(
+                title: netChangeAmount >= 0 ? "Net Increase" : "Net Drop",
+                value: abs(netChangeAmount),
+                tint: netChangeAmount >= 0 ? .orange : .blue
+            )
+        }
+    }
+
+    private var breakdownCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Breakdown")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(secondaryTextColor)
 
-            Text(finalAmount, format: .currency(code: currencyCode))
-                .font(.system(size: 42, weight: .bold, design: .rounded))
-                .foregroundStyle(accentColor)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
+            breakdownRow(label: "Original", value: itemAmount, sign: "")
+            breakdownRow(label: "Discount", value: discountAmount, sign: "-")
+            breakdownRow(label: "Subtotal", value: subtotalAfterDiscount, sign: "")
+            breakdownRow(label: "Tax", value: taxAmount, sign: "+")
 
-            HStack(spacing: 8) {
-                Text("-\(discountAmount, format: .currency(code: currencyCode))")
-                Text("•")
-                Text("+\(taxAmount, format: .currency(code: currencyCode))")
-                Text("•")
-                Text("\(netChangeAmount >= 0 ? "+" : "-")\(abs(netChangeAmount), format: .currency(code: currencyCode))")
+            Divider()
+                .overlay(accentColor.opacity(0.3))
+
+            HStack {
+                Text("Total")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(currencyTextColor)
+                Spacer()
+                Text(finalAmount, format: .currency(code: currencyCode))
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(accentColor)
             }
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(secondaryTextColor)
-            .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
         .calculatorPillGlass(accentColor: accentColor)
     }
 
@@ -182,10 +209,16 @@ struct BlankTabOneView: View {
         action: @escaping (Double) -> Void
     ) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(secondaryTextColor)
-                .padding(.horizontal, 4)
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(secondaryTextColor)
+                Spacer()
+                Text("\(formatPercent(selectedValue))%")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(accentColor)
+            }
+            .padding(.horizontal, 4)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
@@ -221,17 +254,65 @@ struct BlankTabOneView: View {
                         } label: {
                             key.labelView
                                 .font(.title3.weight(.bold))
-                                .foregroundStyle(currencyTextColor)
+                                .foregroundStyle(keyForeground(for: key))
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 62)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                         .contentShape(Rectangle())
-                        .calculatorPillGlass(accentColor: accentColor)
+                        .calculatorPillGlass(
+                            accentColor: accentColor,
+                            isEmphasized: key == .backspace || key == .clear
+                        )
                     }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private func amountTier(title: String, value: Double, emphasis: AmountEmphasis) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(secondaryTextColor)
+
+            Text(value, format: .currency(code: currencyCode))
+                .font(.system(size: emphasis == .accent ? 46 : 36, weight: .bold, design: .rounded))
+                .foregroundStyle(emphasis == .accent ? accentColor : currencyTextColor)
+                .minimumScaleFactor(0.72)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func compactStatPill(title: String, value: Double, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(secondaryTextColor)
+            Text(value, format: .currency(code: currencyCode))
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(currencyTextColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .calculatorPillGlass(accentColor: tint)
+    }
+
+    private func breakdownRow(label: String, value: Double, sign: String) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(secondaryTextColor)
+            Spacer()
+            Text("\(sign)\(value, format: .currency(code: currencyCode))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(currencyTextColor)
         }
     }
 
@@ -251,6 +332,22 @@ struct BlankTabOneView: View {
     private func formatPercent(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(value.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2)))
     }
+
+    private func keyForeground(for key: CalculatorKey) -> Color {
+        switch key {
+        case .clear:
+            return .red
+        case .backspace:
+            return accentColor
+        case .digit:
+            return currencyTextColor
+        }
+    }
+}
+
+private enum AmountEmphasis {
+    case secondary
+    case accent
 }
 
 private enum CalculatorKey: Hashable {
@@ -295,14 +392,14 @@ private extension View {
 
 #Preview("Calculator - Dark") {
     NavigationStack {
-        BlankTabOneView()
+        CalculatorView()
     }
     .preferredColorScheme(.dark)
 }
 
 #Preview("Calculator - Light") {
     NavigationStack {
-        BlankTabOneView()
+        CalculatorView()
     }
     .preferredColorScheme(.light)
 }
