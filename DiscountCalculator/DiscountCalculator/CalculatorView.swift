@@ -7,6 +7,7 @@ struct CalculatorView: View {
     @State private var rawDigits: String = ""
     @State private var selectedDiscountPercent: Double = 25
     @State private var selectedTaxPercent: Double = 5.6
+    @State private var selectedHeaderPage: Int = 0
 
     private let discountOptions: [Double] = [0, 5, 10, 15, 20, 25, 30, 40, 50]
     private let taxOptions: [Double] = [0, 4, 5, 5.6, 6.5, 7.25, 8.25, 9.5]
@@ -112,12 +113,11 @@ struct CalculatorView: View {
                 .offset(x: 170, y: 260)
 
             VStack(spacing: 12) {
-                VStack(spacing: 10) {
-                    amountStackCard
-                    quickStatsRow
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
+                headerPagerCard
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+
+                headerPageIndicator
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 14) {
@@ -138,8 +138,6 @@ struct CalculatorView: View {
                         }
 
                         keypad
-
-                        breakdownCard
                     }
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
@@ -149,25 +147,46 @@ struct CalculatorView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var amountStackCard: some View {
-        VStack(spacing: 10) {
-            amountTier(
-                title: "Original Amount",
-                value: itemAmount,
-                emphasis: .secondary
-            )
+    private var headerPagerCard: some View {
+        TabView(selection: $selectedHeaderPage) {
+            VStack(spacing: 10) {
+                amountTier(
+                    title: "Original Amount",
+                    value: itemAmount,
+                    emphasis: .secondary
+                )
 
-            Divider()
-                .overlay(accentColor.opacity(0.4))
+                Divider()
+                    .overlay(accentColor.opacity(0.4))
 
-            amountTier(
-                title: "Final Amount",
-                value: finalAmount,
-                emphasis: .accent
-            )
+                amountTier(
+                    title: "Final Amount",
+                    value: finalAmount,
+                    emphasis: .accent
+                )
+
+                quickStatsRow
+            }
+            .tag(0)
+
+            breakdownContent
+                .tag(1)
         }
-        .padding(16)
+        .padding(14)
+        .frame(height: 255)
         .calculatorPillGlass(accentColor: accentColor, isEmphasized: true)
+        .tabViewStyle(.page(indexDisplayMode: .never))
+    }
+
+    private var headerPageIndicator: some View {
+        HStack(spacing: 7) {
+            ForEach(0..<2, id: \.self) { index in
+                Capsule(style: .continuous)
+                    .fill(index == selectedHeaderPage ? accentColor : secondaryTextColor.opacity(0.4))
+                    .frame(width: index == selectedHeaderPage ? 18 : 7, height: 7)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: selectedHeaderPage)
     }
 
     private var quickStatsRow: some View {
@@ -181,7 +200,7 @@ struct CalculatorView: View {
         }
     }
 
-    private var breakdownCard: some View {
+    private var breakdownContent: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Breakdown")
                 .font(.caption.weight(.semibold))
@@ -191,6 +210,8 @@ struct CalculatorView: View {
             breakdownRow(label: "Discount", value: discountAmount, sign: "-")
             breakdownRow(label: "Subtotal", value: subtotalAfterDiscount, sign: "")
             breakdownRow(label: "Tax", value: taxAmount, sign: "+")
+
+            Spacer(minLength: 0)
 
             Divider()
                 .overlay(accentColor.opacity(0.3))
@@ -205,8 +226,7 @@ struct CalculatorView: View {
                     .foregroundStyle(accentColor)
             }
         }
-        .padding(16)
-        .calculatorPillGlass(accentColor: accentColor)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func selectionRow(
