@@ -8,14 +8,30 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.appTheme) var theme
+    @EnvironmentObject var themeManager: ThemeManager
+    @Environment(\.colorScheme) var colorScheme
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Themed App")
+                    .font(.largeTitle)
+                    .foregroundColor(theme.accentColor(for: colorScheme))
+                
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(theme.backgroundColor(for: colorScheme))
+                    .frame(height: 100)
+                
+                NavigationLink("Change Theme") {
+                    ThemePickerView()
+                }
+                .tint(theme.accentColor(for: colorScheme))
+            }
+            .padding()
+            .background(theme.backgroundColor(for: colorScheme))
+            .navigationTitle("Home")
         }
-        .padding()
     }
 }
 

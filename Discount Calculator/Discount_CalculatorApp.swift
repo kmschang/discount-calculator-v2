@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct Discount_CalculatorApp: App {
+    @StateObject var themeManager = ThemeManager()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Home()
+                .environment(\.appTheme, themeManager.currentTheme)
+                .environmentObject(themeManager)
+            
         }
     }
 }
