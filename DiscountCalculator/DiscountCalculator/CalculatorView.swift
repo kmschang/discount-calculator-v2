@@ -197,9 +197,11 @@ struct CalculatorView: View {
         HStack(spacing: 10) {
             compactStatPill(title: "Savings", value: savingsAmount, tint: .green)
             compactStatPill(
-                title: netChangeAmount >= 0 ? "Net Increase" : "Net Drop",
+                title: netPillTitle,
                 value: abs(netChangeAmount),
-                tint: netChangeAmount >= 0 ? .orange : .blue
+                tint: netPillTint,
+                symbolName: netPillSymbol,
+                showContrastRing: isNetTintMatchingTheme
             )
         }
     }
@@ -322,11 +324,25 @@ struct CalculatorView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func compactStatPill(title: String, value: Double, tint: Color) -> some View {
+    private func compactStatPill(
+        title: String,
+        value: Double,
+        tint: Color,
+        symbolName: String? = nil,
+        showContrastRing: Bool = false
+    ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(secondaryTextColor)
+            HStack(spacing: 6) {
+                Text(title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(secondaryTextColor)
+
+                if let symbolName {
+                    Image(systemName: symbolName)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(tint)
+                }
+            }
             Text(value, format: .currency(code: currencyCode))
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(currencyTextColor)
@@ -337,6 +353,12 @@ struct CalculatorView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .calculatorPillGlass(accentColor: tint)
+        .overlay {
+            if showContrastRing {
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke((colorScheme == .dark ? Color.white : Color.black).opacity(0.7), lineWidth: 1.25)
+            }
+        }
     }
 
     private func breakdownRow(label: String, value: Double, sign: String) -> some View {
@@ -390,6 +412,48 @@ struct CalculatorView: View {
         return (taxAmount / itemAmount) * 100
     }
 
+    private var netPillTitle: String {
+        switch netChangeState {
+        case .increase: return "Net Increase"
+        case .decrease: return "Net Decrease"
+        case .neutral: return "Net Neutral"
+        }
+    }
+
+    private var netPillSymbol: String {
+        switch netChangeState {
+        case .increase: return "arrow.up"
+        case .decrease: return "arrow.down"
+        case .neutral: return "equal"
+        }
+    }
+
+    private var netPillTint: Color {
+        switch netChangeState {
+        case .increase: return .red
+        case .decrease: return .green
+        case .neutral: return .blue
+        }
+    }
+
+    private var netChangeState: NetChangeState {
+        if abs(netChangeAmount) < 0.005 {
+            return .neutral
+        } else if netChangeAmount > 0 {
+            return .increase
+        } else {
+            return .decrease
+        }
+    }
+
+    private var isNetTintMatchingTheme: Bool {
+        switch netChangeState {
+        case .increase: return themeColor == 1
+        case .decrease: return themeColor == 4
+        case .neutral: return themeColor == 5
+        }
+    }
+
     private func keyForeground(for key: CalculatorKey) -> Color {
         switch key {
         case .clear:
@@ -405,6 +469,12 @@ struct CalculatorView: View {
 private enum AmountEmphasis {
     case secondary
     case accent
+}
+
+private enum NetChangeState {
+    case increase
+    case decrease
+    case neutral
 }
 
 private enum CalculatorKey: Hashable {
