@@ -149,32 +149,13 @@ struct CalculatorView: View {
 
     private var headerPagerCard: some View {
         TabView(selection: $selectedHeaderPage) {
-            VStack(spacing: 10) {
-                amountTier(
-                    title: "Original Amount",
-                    value: itemAmount,
-                    emphasis: .secondary
-                )
-
-                Divider()
-                    .overlay(accentColor.opacity(0.4))
-
-                amountTier(
-                    title: "Final Amount",
-                    value: finalAmount,
-                    emphasis: .accent
-                )
-
-                quickStatsRow
-            }
+            summaryPage
             .tag(0)
 
             breakdownContent
                 .tag(1)
         }
-        .padding(14)
-        .frame(height: 255)
-        .calculatorPillGlass(accentColor: accentColor, isEmphasized: true)
+        .frame(height: 285)
         .tabViewStyle(.page(indexDisplayMode: .never))
     }
 
@@ -187,6 +168,29 @@ struct CalculatorView: View {
             }
         }
         .animation(.easeInOut(duration: 0.2), value: selectedHeaderPage)
+    }
+
+    private var summaryPage: some View {
+        VStack(spacing: 12) {
+            amountTier(
+                title: "Original Amount",
+                value: itemAmount,
+                emphasis: .secondary
+            )
+
+            Divider()
+                .overlay(accentColor.opacity(0.4))
+
+            amountTier(
+                title: "Final Amount",
+                value: finalAmount,
+                emphasis: .accent
+            )
+
+            quickStatsRow
+        }
+        .padding(14)
+        .calculatorPillGlass(accentColor: accentColor, isEmphasized: true)
     }
 
     private var quickStatsRow: some View {
@@ -210,6 +214,8 @@ struct CalculatorView: View {
             breakdownRow(label: "Discount", value: discountAmount, sign: "-")
             breakdownRow(label: "Subtotal", value: subtotalAfterDiscount, sign: "")
             breakdownRow(label: "Tax", value: taxAmount, sign: "+")
+            breakdownPercentRow(label: "Effective Discount", value: effectiveDiscountPercent)
+            breakdownPercentRow(label: "Effective Tax", value: effectiveTaxPercent)
 
             Spacer(minLength: 0)
 
@@ -226,6 +232,8 @@ struct CalculatorView: View {
                     .foregroundStyle(accentColor)
             }
         }
+        .padding(14)
+        .calculatorPillGlass(accentColor: accentColor, isEmphasized: true)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
@@ -343,6 +351,18 @@ struct CalculatorView: View {
         }
     }
 
+    private func breakdownPercentRow(label: String, value: Double) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(secondaryTextColor)
+            Spacer()
+            Text("\(formatPercent(value))%")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(currencyTextColor)
+        }
+    }
+
     private func handle(_ key: CalculatorKey) {
         switch key {
         case .digit(let value):
@@ -358,6 +378,16 @@ struct CalculatorView: View {
 
     private func formatPercent(_ value: Double) -> String {
         value.formatted(.number.precision(.fractionLength(value.truncatingRemainder(dividingBy: 1) == 0 ? 0 : 2)))
+    }
+
+    private var effectiveDiscountPercent: Double {
+        guard itemAmount > 0 else { return 0 }
+        return (discountAmount / itemAmount) * 100
+    }
+
+    private var effectiveTaxPercent: Double {
+        guard itemAmount > 0 else { return 0 }
+        return (taxAmount / itemAmount) * 100
     }
 
     private func keyForeground(for key: CalculatorKey) -> Color {
