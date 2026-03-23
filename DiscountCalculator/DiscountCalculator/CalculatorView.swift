@@ -111,32 +111,39 @@ struct CalculatorView: View {
                 .blur(radius: 90)
                 .offset(x: 170, y: 260)
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
+            VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     amountStackCard
                     quickStatsRow
-
-                    selectionRow(
-                        title: "Discount",
-                        selectedValue: selectedDiscountPercent,
-                        options: discountOptions
-                    ) { value in
-                        selectedDiscountPercent = value
-                    }
-
-                    selectionRow(
-                        title: "Tax",
-                        selectedValue: selectedTaxPercent,
-                        options: taxOptions
-                    ) { value in
-                        selectedTaxPercent = value
-                    }
-
-                    breakdownCard
-                    keypad
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.top, 10)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        selectionRow(
+                            title: "Discount",
+                            selectedValue: selectedDiscountPercent,
+                            options: discountOptions
+                        ) { value in
+                            selectedDiscountPercent = value
+                        }
+
+                        selectionRow(
+                            title: "Tax",
+                            selectedValue: selectedTaxPercent,
+                            options: taxOptions
+                        ) { value in
+                            selectedTaxPercent = value
+                        }
+
+                        keypad
+
+                        breakdownCard
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 10)
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
