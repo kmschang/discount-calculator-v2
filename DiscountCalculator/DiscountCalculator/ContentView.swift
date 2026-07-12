@@ -1,8 +1,9 @@
 import SwiftUI
 
+/// Root of the app: a single calculator screen (no tab bar), with the info and
+/// settings sheets hanging off the top toolbar and the launch loading screen.
 struct ContentView: View {
     @State private var store = CalculatorStore()
-    @State private var selectedTab: Tab = .calculate
     @State private var isInfoSheetPresented = false
     @State private var isSettingsSheetPresented = false
     @State private var isShowingLoading = true
@@ -14,70 +15,51 @@ struct ContentView: View {
     @AppStorage("localTaxRate") private var localTaxRate: Double = 0
     @Environment(\.colorScheme) private var systemColorScheme
 
-    enum Tab: String, Hashable {
-        case calculate = "Calculate"
-        case taxByState = "Tax by State"
-    }
-
     init(showLoadingInitially: Bool = true) {
-        let args = ProcessInfo.processInfo.arguments
-        let skipLoading = args.contains("-DemoData")
+        let skipLoading = ProcessInfo.processInfo.arguments.contains("-DemoData")
         _isShowingLoading = State(initialValue: showLoadingInitially && !skipLoading)
-        if args.contains("-StartTaxTab") {
-            _selectedTab = State(initialValue: .taxByState)
-        }
     }
-
-    private var currentTabTitle: String { selectedTab.rawValue }
 
     private var appColorScheme: ColorScheme? {
         AppTheme.appColorScheme(appearanceMode: appearanceMode)
     }
 
-    private var tabAccentColor: Color {
+    private var accentColor: Color {
         AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemColorScheme)
     }
 
     private var mainAppView: some View {
         NavigationStack {
-            TabView(selection: $selectedTab) {
-                CalculatorView()
-                    .tabItem { Label("Calculate", systemImage: "percent") }
-                    .tag(Tab.calculate)
-
-                TaxByStateView()
-                    .tabItem { Label("Tax by State", systemImage: "building.columns") }
-                    .tag(Tab.taxByState)
-            }
-            .tint(tabAccentColor)
-            .navigationTitle(currentTabTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        isInfoSheetPresented = true
-                    } label: {
-                        Image(systemName: "info.circle")
+            CalculatorView()
+                .tint(accentColor)
+                .navigationTitle("Discount Calculator")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            isInfoSheetPresented = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                        }
+                        .tint(.primary)
                     }
-                    .tint(.primary)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        isSettingsSheetPresented = true
-                    } label: {
-                        Image(systemName: "gearshape")
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            isSettingsSheetPresented = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        .tint(.primary)
                     }
-                    .tint(.primary)
                 }
-            }
-            .sheet(isPresented: $isInfoSheetPresented) {
-                InfoView()
-                    .presentationDragIndicator(.visible)
-            }
-            .sheet(isPresented: $isSettingsSheetPresented) {
-                SettingsView()
-                    .presentationDragIndicator(.visible)
-            }
+                .sheet(isPresented: $isInfoSheetPresented) {
+                    InfoView()
+                        .presentationDragIndicator(.visible)
+                }
+                .sheet(isPresented: $isSettingsSheetPresented) {
+                    SettingsView()
+                        .presentationDragIndicator(.visible)
+                }
         }
         .environment(store)
         .task {

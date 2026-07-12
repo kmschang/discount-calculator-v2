@@ -9,6 +9,7 @@
 //
 
 import CoreLocation
+import MapKit
 import SwiftUI
 
 @MainActor
@@ -16,7 +17,6 @@ final class LocationManager: NSObject, ObservableObject {
     static let shared = LocationManager()
 
     private let manager = CLLocationManager()
-    private let geocoder = CLGeocoder()
 
     @Published private(set) var authorizationStatus: CLAuthorizationStatus
     @Published private(set) var isResolving = false
@@ -88,31 +88,72 @@ final class LocationManager: NSObject, ObservableObject {
     }
 
     private func reverseGeocode(_ location: CLLocation) {
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            Task { @MainActor in
-                guard let self else { return }
-                if let error {
-                    self.lastError = error.localizedDescription
-                    self.finish(nil)
-                    return
-                }
-                guard let placemark = placemarks?.first else {
+        guard let request = MKReverseGeocodingRequest(location: location) else {
+            lastError = "Couldn't determine your location."
+            finish(nil)
+            return
+        }
+        // Force US-English formatting so the returned address is predictably
+        // "…, Cupertino, CA 95014, United States" — the shape we parse below.
+        request.preferredLocale = Locale(identifier: "en_US")
+        Task { @MainActor in
+            do {
+                let mapItems = try await request.mapItems
+                guard let item = mapItems.first else {
                     self.lastError = "Couldn't determine your location."
                     self.finish(nil)
                     return
                 }
-                guard placemark.isoCountryCode == "US" else {
+                // iOS 26's MapKit reverse-geocoding only vends display strings — it
+                // dropped the structured 2-letter state / ISO country code that the
+                // deprecated CLPlacemark gave us — so recover the state code from the
+                // formatted address text.
+                guard let code = Self.usStateCode(from: item) else {
                     self.lastError = "This app's tax rates only cover the US."
                     self.finish(nil)
                     return
                 }
-                // In US placemarks, administrativeArea is the 2-letter state code.
-                let code = placemark.administrativeArea
                 self.lastResolvedStateCode = code
-                self.lastResolvedStateName = code.flatMap { USStateTax.byCode($0)?.name }
+                self.lastResolvedStateName = USStateTax.byCode(code)?.name
                 self.finish(code)
+            } catch {
+                self.lastError = error.localizedDescription
+                self.finish(nil)
             }
         }
+    }
+
+    // MARK: State-code extraction (iOS 26 MapKit gives us only text)
+
+    /// Pulls a 2-letter US state code out of a reverse-geocoded map item, trying
+    /// the full postal address first and the short "City, ST" context second.
+    /// Returns nil for non-US locations (or anything we can't confidently parse).
+    private static func usStateCode(from item: MKMapItem) -> String? {
+        if let full = item.address?.fullAddress,
+           let code = stateCode(inPostalAddress: full) {
+            return code
+        }
+        if let city = item.addressRepresentations?.cityWithContext,
+           let code = trailingStateCode(in: city) {
+            return code
+        }
+        return nil
+    }
+
+    /// Matches the "ST 12345" fragment of a US postal address (2 uppercase letters
+    /// followed by a 5-digit ZIP) and validates it against the known state list.
+    private static func stateCode(inPostalAddress text: String) -> String? {
+        guard let range = text.range(of: #"\b[A-Z]{2}\s+\d{5}(-\d{4})?\b"#,
+                                     options: .regularExpression) else { return nil }
+        let code = String(text[range].prefix(2))
+        return USStateTax.byCode(code) != nil ? code : nil
+    }
+
+    /// Extracts the trailing state code from a "City, ST" style string.
+    private static func trailingStateCode(in text: String) -> String? {
+        guard let last = text.split(separator: ",").last else { return nil }
+        let code = last.trimmingCharacters(in: .whitespaces).uppercased()
+        return (code.count == 2 && USStateTax.byCode(code) != nil) ? code : nil
     }
 }
 
