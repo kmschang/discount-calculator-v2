@@ -1,65 +1,53 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var selectedTab: Tab = .tab1
+    @State private var store = CalculatorStore()
+    @State private var selectedTab: Tab = .calculate
     @State private var isInfoSheetPresented = false
     @State private var isSettingsSheetPresented = false
     @State private var isShowingLoading = true
 
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
+    @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
+    @AppStorage("homeStateCode") private var homeStateCode: String = ""
+    @AppStorage("localTaxRate") private var localTaxRate: Double = 0
     @Environment(\.colorScheme) private var systemColorScheme
 
     enum Tab: String, Hashable {
-        case tab1 = "Calculator"
-        case tab2 = "Tab 2"
-        case tab3 = "Tab 3"
+        case calculate = "Calculate"
+        case taxByState = "Tax by State"
     }
 
     init(showLoadingInitially: Bool = true) {
-        _isShowingLoading = State(initialValue: showLoadingInitially)
+        let args = ProcessInfo.processInfo.arguments
+        let skipLoading = args.contains("-DemoData")
+        _isShowingLoading = State(initialValue: showLoadingInitially && !skipLoading)
+        if args.contains("-StartTaxTab") {
+            _selectedTab = State(initialValue: .taxByState)
+        }
     }
 
     private var currentTabTitle: String { selectedTab.rawValue }
 
     private var appColorScheme: ColorScheme? {
-        switch appearanceMode {
-        case 1: return .light
-        case 2: return .dark
-        default: return nil
-        }
+        AppTheme.appColorScheme(appearanceMode: appearanceMode)
     }
 
     private var tabAccentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            let effectiveScheme = appColorScheme ?? systemColorScheme
-            return effectiveScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemColorScheme)
     }
 
     private var mainAppView: some View {
         NavigationStack {
             TabView(selection: $selectedTab) {
                 CalculatorView()
-                    .tabItem { Label("Calculator", systemImage: "percent") }
-                    .tag(Tab.tab1)
+                    .tabItem { Label("Calculate", systemImage: "percent") }
+                    .tag(Tab.calculate)
 
-                BlankTabTwoView()
-                    .tabItem { Label("Tab 2", systemImage: "2.circle") }
-                    .tag(Tab.tab2)
-
-                BlankTabThreeView()
-                    .tabItem { Label("Tab 3", systemImage: "3.circle") }
-                    .tag(Tab.tab3)
+                TaxByStateView()
+                    .tabItem { Label("Tax by State", systemImage: "building.columns") }
+                    .tag(Tab.taxByState)
             }
             .tint(tabAccentColor)
             .navigationTitle(currentTabTitle)
@@ -91,6 +79,27 @@ struct ContentView: View {
                     .presentationDragIndicator(.visible)
             }
         }
+        .environment(store)
+        .task {
+            maybeAutoDetectState()
+            TaxWidgetSharedStore.update(homeStateCode: homeStateCode, localTaxRate: localTaxRate)
+        }
+        .onChange(of: homeStateCode) { _, _ in
+            TaxWidgetSharedStore.update(homeStateCode: homeStateCode, localTaxRate: localTaxRate)
+        }
+        .onChange(of: localTaxRate) { _, _ in
+            TaxWidgetSharedStore.update(homeStateCode: homeStateCode, localTaxRate: localTaxRate)
+        }
+    }
+
+    private func maybeAutoDetectState() {
+        guard autoDetectStateFromLocation else { return }
+        LocationManager.shared.requestStateFromLocation { code in
+            if let code, USStateTax.byCode(code) != nil {
+                homeStateCode = code
+                store.selectState(code)
+            }
+        }
     }
 
     var body: some View {
@@ -117,17 +126,12 @@ struct ContentView: View {
     }
 }
 
-#Preview("Context View - Light") {
+#Preview("Content - Light") {
     ContentView(showLoadingInitially: false)
         .preferredColorScheme(.light)
 }
 
-#Preview("Context View - Dark") {
+#Preview("Content - Dark") {
     ContentView(showLoadingInitially: false)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Context View - Loading") {
-    ContentView(showLoadingInitially: true)
         .preferredColorScheme(.dark)
 }

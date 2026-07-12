@@ -1,3 +1,12 @@
+//
+//  InfoView.swift
+//  DiscountCalculator
+//
+//  About screen styled after Day Calculator: glass card with app icon,
+//  version/build info, developer credit, tappable company logo grid,
+//  and external-link confirmation.
+//
+
 import SwiftUI
 
 struct InfoView: View {
@@ -5,27 +14,21 @@ struct InfoView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
     @AppStorage("suppressExternalLinkWarning") private var suppressExternalLinkWarning: Bool = false
+
     @State private var showDiscountDestinationOptions: Bool = false
     @State private var showExternalLinkWarningAlert: Bool = false
     @State private var pendingExternalURL: URL? = nil
 
+    // MARK: - Theme
+
     private var accentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            return colorScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: colorScheme)
     }
 
+    // Appearance/tint tokens for logo asset naming
     private var appearanceToken: String { colorScheme == .dark ? "Dark" : "Light" }
 
     private var tintToken: String {
@@ -41,8 +44,12 @@ struct InfoView: View {
         }
     }
 
-    private func assetName(_ base: String) -> String {
-        "\(base)(\(appearanceToken))(\(tintToken))"
+    private var sonnazGroupLogoAssetName: String {
+        "SonnazGroupLogo(\(appearanceToken))(\(tintToken))"
+    }
+
+    private var quickerTipperLogoAssetName: String {
+        "QuickerTipperLogo(\(appearanceToken))(\(tintToken))"
     }
 
     private var discountCalculatorLogoAssetName: String {
@@ -52,12 +59,15 @@ struct InfoView: View {
         )
     }
 
+    /// Logo variant that matches the user's currently selected app icon.
     private var currentAppIconPreviewName: String {
         discountCalculatorLogoName(
             appearance: discountCalculatorLogoAppearance(for: colorScheme),
             color: discountCalculatorLogoColor(forAppIconName: selectedAppIconName)
         )
     }
+
+    // MARK: - URLs
 
     private let websiteURL = URL(string: "https://www.sonnazgroup.com")
     private let webAppURL = URL(string: "https://sonnazgroup.com/discount-calculator")
@@ -67,10 +77,12 @@ struct InfoView: View {
     private let discountCalculatorURL = URL(string: "https://sonnazgroup.com/discount-calculator")
     private let quickerTipperURL = URL(string: "https://sonnazgroup.com/quicker-tipper")
 
+    // MARK: - Body
+
     var body: some View {
         NavigationStack {
             ZStack {
-                backgroundLayer
+                CalculatorBackground(accentColor: accentColor, colorScheme: colorScheme)
                 contentLayer
             }
             .navigationTitle("About")
@@ -100,44 +112,6 @@ struct InfoView: View {
         .tint(accentColor)
     }
 
-    private var backgroundLayer: some View {
-        let isDarkMode = colorScheme == .dark
-        return ZStack {
-            LinearGradient(
-                colors: isDarkMode
-                    ? [Color.black, Color(red: 0.05, green: 0.05, blue: 0.1)]
-                    : [Color(red: 0.94, green: 0.96, blue: 1.0), Color.white],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [accentColor.opacity(0.40), Color.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 260, height: 260)
-                .blur(radius: 70)
-                .offset(x: -150, y: -260)
-
-            Circle()
-                .fill(
-                    LinearGradient(
-                        colors: [(isDarkMode ? Color.white : Color.black).opacity(0.25), Color.clear],
-                        startPoint: .bottomTrailing,
-                        endPoint: .topLeading
-                    )
-                )
-                .frame(width: 260, height: 260)
-                .blur(radius: 70)
-                .offset(x: 160, y: 220)
-        }
-    }
-
     private var contentLayer: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
@@ -149,33 +123,20 @@ struct InfoView: View {
         }
     }
 
+    // MARK: - App card
+
     private var appCard: some View {
         VStack(spacing: 20) {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(colorScheme == .dark ? 0.4 : 0.65),
-                                    accentColor.opacity(0.55)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.2
-                        )
-                )
+            // App icon showcase
+            Image(currentAppIconPreviewName)
+                .resizable()
+                .scaledToFit()
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .padding(20)
                 .frame(width: 180, height: 180)
-                .overlay {
-                    Image(currentAppIconPreviewName)
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .padding(20)
-                }
+                .glassCard(accentColor: accentColor, cornerRadius: 32, emphasized: true)
 
+            // App title
             VStack(spacing: 0) {
                 Text("Discount")
                 Text("Calculator")
@@ -183,6 +144,7 @@ struct InfoView: View {
             .font(.system(size: 30, weight: .heavy, design: .default))
             .foregroundColor(colorScheme == .dark ? .white : .primary)
 
+            // Accent divider
             Rectangle()
                 .fill(
                     LinearGradient(
@@ -194,6 +156,7 @@ struct InfoView: View {
                 .frame(height: 2)
                 .padding(.horizontal, 40)
 
+            // Version & about info
             VStack(spacing: 16) {
                 HStack {
                     Text("Version")
@@ -230,8 +193,9 @@ struct InfoView: View {
                     }
                 }
 
+                // Company + apps — tappable logos
                 ViewThatFits(in: .horizontal) {
-                    companyAppsLogoGrid(columnCount: 4, spacing: 14, minimumTileWidth: 60)
+                    companyAppsLogoGrid(columnCount: 3, spacing: 14, minimumTileWidth: 60)
                     companyAppsLogoGrid(
                         columnCount: 2,
                         spacing: 14,
@@ -262,20 +226,11 @@ struct InfoView: View {
         }
         .padding(24)
         .frame(maxWidth: 380)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 30, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .strokeBorder(
-                    LinearGradient(
-                        colors: [Color.white.opacity(colorScheme == .dark ? 0.5 : 0.7), accentColor.opacity(0.4)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
-        )
+        .glassCard(accentColor: accentColor, cornerRadius: 30, emphasized: true)
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.5 : 0.18), radius: 26, x: 0, y: 18)
     }
+
+    // MARK: - Links section
 
     private var linksSection: some View {
         VStack(spacing: 10) {
@@ -297,6 +252,8 @@ struct InfoView: View {
         .padding(.bottom, 40)
     }
 
+    // MARK: - Logo grid
+
     private func companyAppsLogoGrid(
         columnCount: Int,
         spacing: CGFloat,
@@ -308,96 +265,40 @@ struct InfoView: View {
         let columns = Array(repeating: GridItem(.flexible(minimum: minimumTileWidth), spacing: spacing), count: columnCount)
 
         return LazyVGrid(columns: columns, spacing: spacing) {
-            logoLinkTile(
-                imageName: assetName("SonnazGroupLogo"),
-                url: websiteURL,
-                maximumTileWidth: maximumTileWidth
-            )
-            logoActionTile(imageName: discountCalculatorLogoAssetName, maximumTileWidth: maximumTileWidth) {
+            logoTile(imageName: sonnazGroupLogoAssetName, maximumTileWidth: maximumTileWidth) {
+                if let url = websiteURL {
+                    openLinkWithWarning(url, title: "Sonnaz Group Website")
+                }
+            }
+            logoTile(imageName: discountCalculatorLogoAssetName, maximumTileWidth: maximumTileWidth) {
                 showDiscountDestinationOptions = true
             }
-            logoLinkTile(
-                imageName: discountCalculatorLogoAssetName,
-                url: discountCalculatorURL,
-                maximumTileWidth: maximumTileWidth
-            )
-            logoLinkTile(
-                imageName: assetName("QuickerTipperLogo"),
-                url: quickerTipperURL,
-                maximumTileWidth: maximumTileWidth
-            )
+            logoTile(imageName: quickerTipperLogoAssetName, maximumTileWidth: maximumTileWidth) {
+                if let url = quickerTipperURL {
+                    openLinkWithWarning(url, title: "Quicker Tipper")
+                }
+            }
         }
         .frame(maxWidth: gridMaxWidth ?? .infinity, alignment: alignment)
         .frame(maxWidth: .infinity, alignment: alignment)
     }
 
-    private func logoActionTile(
+    private func logoTile(
         imageName: String,
         maximumTileWidth: CGFloat? = nil,
         action: @escaping () -> Void
     ) -> some View {
-        let cornerRadius: CGFloat = 18
-        return Button(action: action) {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [Color.white.opacity(colorScheme == .dark ? 0.4 : 0.65), accentColor.opacity(0.55)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.2
-                        )
-                )
+        Button(action: action) {
+            Image(imageName)
+                .resizable()
+                .scaledToFit()
+                .padding(10)
                 .frame(maxWidth: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .overlay {
-                    Image(imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
-                        .padding(10)
-                }
+                .glassCard(accentColor: accentColor, cornerRadius: 18)
         }
         .frame(maxWidth: maximumTileWidth)
         .buttonStyle(.plain)
-    }
-
-    private func logoLinkTile(imageName: String, url: URL?, maximumTileWidth: CGFloat? = nil) -> some View {
-        let cornerRadius: CGFloat = 18
-        return Button {
-            if let url {
-                openLinkWithWarning(url)
-            }
-        } label: {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(
-                                colors: [Color.white.opacity(colorScheme == .dark ? 0.4 : 0.65), accentColor.opacity(0.55)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.2
-                        )
-                )
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
-                .overlay {
-                    Image(imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .clipShape(RoundedRectangle(cornerRadius: 0, style: .continuous))
-                        .padding(10)
-                }
-        }
-        .frame(maxWidth: maximumTileWidth)
-        .buttonStyle(.plain)
-        .opacity(url == nil ? 0.4 : 1.0)
     }
 
     private func infoLinkButton(title: String, url: URL?) -> some View {
@@ -415,6 +316,8 @@ struct InfoView: View {
         .disabled(url == nil)
         .opacity(url == nil ? 0.4 : 1.0)
     }
+
+    // MARK: - External links
 
     private func openEmailSupport() {
         let encoded = supportEmail.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? supportEmail
@@ -453,6 +356,8 @@ private extension Bundle {
         infoDictionary?["CFBundleVersion"] as? String
     }
 }
+
+// MARK: - Previews
 
 #Preview("Info – Light") {
     InfoView()

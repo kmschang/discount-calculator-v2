@@ -55,7 +55,7 @@ struct AppIconSettingsView: View {
     }
     
     // Theme color from Settings
-    @AppStorage("themeColor") private var themeColor: Int = 1
+    @AppStorage("themeColor") private var themeColor: Int = 7
     @Environment(\.colorScheme) var colorScheme
     
     private var accentColor: Color {

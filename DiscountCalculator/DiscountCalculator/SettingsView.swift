@@ -7,6 +7,14 @@ struct SettingsView: View {
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
+    @AppStorage("homeStateCode") private var homeStateCode: String = ""
+    @AppStorage("localTaxRate") private var localTaxRate: Double = 0
+    @AppStorage("roundToCents") private var roundToCents: Bool = true
+    @AppStorage("taxOnOriginal") private var taxOnOriginal: Bool = false
+    @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
+    @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled: Bool = true
+    @AppStorage("devModeEnabled") private var devModeEnabled: Bool = false
+    @State private var versionTapCount = 0
 
     private var accentColor: Color {
         switch themeColor {
@@ -82,9 +90,64 @@ struct SettingsView: View {
         }
     }
 
+    private var homeStateName: String {
+        guard !homeStateCode.isEmpty, let state = USStateTax.byCode(homeStateCode) else { return "Not set" }
+        return state.name
+    }
+
+    private var localTaxLabel: String {
+        localTaxRate > 0 ? "\(AppFormat.percent(localTaxRate))%" : "None"
+    }
+
+    private var appVersionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "\(version) (\(build))"
+    }
+
+    private var isDebugBuild: Bool {
+        #if DEBUG
+        return true
+        #else
+        return false
+        #endif
+    }
+
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    NavigationLink {
+                        HomeStateSettingsView()
+                    } label: {
+                        HStack {
+                            Text("Home State")
+                            Spacer()
+                            Text(homeStateName)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    NavigationLink {
+                        LocalTaxSettingsView()
+                    } label: {
+                        HStack {
+                            Text("Local Tax")
+                            Spacer()
+                            Text(localTaxLabel)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Toggle("Round to the penny", isOn: $roundToCents)
+                    Toggle("Tax the original price", isOn: $taxOnOriginal)
+                    Toggle("Find my state automatically", isOn: $autoDetectStateFromLocation)
+                } header: {
+                    Text("Calculator")
+                } footer: {
+                    Text("“Tax the original price” charges sales tax on the price before discounts. Most stores tax the discounted price, so leave this off unless you need it. “Find my state automatically” uses your location on launch to set your state's tax.")
+                }
+
                 Section("Appearance") {
                     NavigationLink {
                         AppearanceModeSettingsView()
@@ -133,6 +196,56 @@ struct SettingsView: View {
                                     .foregroundColor(.secondary)
                             }
                         }
+                    }
+                }
+
+                Section {
+                    Toggle("Sync with iCloud", isOn: $iCloudSyncEnabled)
+                        .onChange(of: iCloudSyncEnabled) { _, newValue in
+                            ICloudSyncManager.shared.isEnabled = newValue
+                        }
+                } header: {
+                    Text("Account")
+                } footer: {
+                    Text("Keeps your home state, local tax, and calculator options in sync across your devices with iCloud. Appearance, accent color, and app icon stay set per-device.")
+                }
+
+                if devModeEnabled || isDebugBuild {
+                    Section("Developer") {
+                        NavigationLink {
+                            DeveloperToolsView()
+                        } label: {
+                            HStack {
+                                Text("Developer Tools")
+                                Spacer()
+                                Text(devModeEnabled ? "On" : "Debug")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                Section("About") {
+                    HStack {
+                        Text("Version")
+                        Spacer()
+                        Text(appVersionString)
+                            .foregroundColor(.secondary)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        versionTapCount += 1
+                        if versionTapCount >= 8 {
+                            devModeEnabled.toggle()
+                            versionTapCount = 0
+                        }
+                    }
+
+                    HStack {
+                        Text("Developer")
+                        Spacer()
+                        Text("Sonnaz Group, LLC")
+                            .foregroundColor(.secondary)
                     }
                 }
             }

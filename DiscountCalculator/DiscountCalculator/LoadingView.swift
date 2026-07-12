@@ -1,8 +1,10 @@
 //
-//  loadingView.swift
-//  DayCalculator
+//  LoadingView.swift
+//  DiscountCalculator
 //
-//  Created by Kyle Schang on 12/11/25.
+//  Loading screen styled after Day Calculator: soft gradient background with
+//  blurred accent blobs, a glass card holding a rotating logo carousel,
+//  bouncing-dot loading animation, and company branding footer.
 //
 
 import SwiftUI
@@ -10,43 +12,22 @@ import UIKit
 
 struct LoadingView: View {
     @State private var currentTab: Int = 0
-    
+
     @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
+
     private let totalTabs = 2
 
-    // MARK: - Accent Color from Theme
+    // MARK: - Theme
 
     private var accentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            // Mono accent: black in light mode, white in dark mode
-            return colorScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: colorScheme)
     }
-    
-    // Neutral blob color that adapts to appearance
-    private var secondaryBlobColor: Color {
-        if colorScheme == .dark {
-            // Lighter gray for contrast on dark backgrounds
-            return Color.white.opacity(0.24)
-        } else {
-            // Darker gray for subtle depth on light backgrounds
-            return Color.black.opacity(0.12)
-        }
-    }
-    
-    // Appearance/tint helpers for logo asset naming
+
+    // Appearance/tint tokens for logo asset naming
     private var appearanceToken: String { colorScheme == .dark ? "Dark" : "Light" }
 
     private var tintToken: String {
@@ -62,172 +43,82 @@ struct LoadingView: View {
         }
     }
 
-    private func assetName(_ base: String) -> String {
-        "\(base)(\(appearanceToken))(\(tintToken))"
+    private var sonnazGroupLogoAssetName: String {
+        "SonnazGroupLogo(\(appearanceToken))(\(tintToken))"
     }
 
-    private var logoColorName: String {
-        assetName("SonnazGroupLogo")
-    }
-    
-    private var logoColorName_DiscountCalculator: String {
+    private var discountCalculatorLogoAssetName: String {
         discountCalculatorLogoName(
             appearance: discountCalculatorLogoAppearance(for: colorScheme),
             color: tintToken
         )
     }
-    
-    private var currentAppIconPreviewName: String {
-        let baseName: String
-        switch selectedAppIconName {
-        case "Primary":
-            baseName = "BlueAppIconLogoRounded"
-        case "BlueAppIcon":
-            baseName = "BlueAppIconLogoRounded"
-        case "GreenAppIcon":
-            baseName = "GreenAppIconLogoRounded"
-        case "OrangeAppIcon":
-            baseName = "OrangeAppIconLogoRounded"
-        case "PurpleAppIcon":
-            baseName = "PurpleAppIconLogoRounded"
-        case "RedAppIcon":
-            baseName = "RedAppIconLogoRounded"
-        case "WhiteAppIcon":
-            baseName = "WhiteAppIconLogoRounded"
-        case "BlackAppIcon":
-            baseName = "BlackAppIconLogoRounded"
-        case "YellowAppIcon":
-            baseName = "YellowAppIconLogoRounded"
-        default:
-            baseName = "BlueAppIconLogoRounded"
-        }
 
-        // Match the current appearance (light/dark) by selecting the appropriate preview asset.
-        return colorScheme == .dark ? "\(baseName)_Dark" : baseName
-    }
-    
+    // MARK: - Body
+
     var body: some View {
         let isDarkMode = (colorScheme == .dark)
         let timer = Timer.publish(every: 45, on: .main, in: .common).autoconnect()
-        
+
         ZStack {
-            // Background changes with light / dark mode (mirrors Info view behavior)
-            Group {
-                if isDarkMode {
-                    RadialGradient(
-                        colors: [
-                            Color.black,
-                            Color(red: 0.02, green: 0.02, blue: 0.06),
-                            Color(red: 0.08, green: 0.0, blue: 0.15)
-                        ],
-                        center: .center,
-                        startRadius: 2,
-                        endRadius: 600
-                    )
-                } else {
-                    LinearGradient(
-                        colors: [
-                            Color.white,
-                            Color(red: 0.94, green: 0.95, blue: 0.98)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                }
-            }
-            .ignoresSafeArea()
-
-            // Colored glow orbs behind the glass card
-            Circle()
-                .fill(accentColor.opacity(0.35))
-                .blur(radius: 120)
-                .offset(x: -120, y: -260)
-
-            Circle()
-                .fill(secondaryBlobColor)
-                .blur(radius: 120)
-                .offset(x: 140, y: 260)
+            // Shared ambient background (gradient + blurred accent blobs)
+            CalculatorBackground(accentColor: accentColor, colorScheme: colorScheme)
 
             VStack(spacing: 32) {
                 Spacer()
 
                 // Main glass card
-                ZStack {
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.55), radius: 40, x: 0, y: 30)
+                VStack(spacing: 24) {
+                    // Rotating logo carousel
+                    TabView(selection: $currentTab) {
+                        carouselLogo(discountCalculatorLogoAssetName, isDarkMode: isDarkMode)
+                            .tag(0)
 
-                    // Shiny border
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .strokeBorder(
-                            LinearGradient(colors: [
-                                Color.white.opacity(0.7),
-                                Color.white.opacity(0.05)
-                            ], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            lineWidth: 1.0
-                        )
-                        .blendMode(.overlay)
-
-                    VStack(spacing: 24) {
-                        // Mini gallery for app / developer photos
-                        TabView(selection: $currentTab) {
-                            Image(logoColorName_DiscountCalculator)
-                                .resizable()
-                                .frame(width: 256, height: 256, alignment: .top)
-                                .padding(.bottom, 48)
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .shadow(color: Color.black.opacity(isDarkMode ? 0.35 : 0.12), radius: 10, x: 0, y: 16)
-                                .tag(0)
-
-                            Image(logoColorName)
-                                .resizable()
-                                .frame(width: 256, height: 256, alignment: .top)
-                                .padding(.bottom, 48)
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .shadow(color: Color.black.opacity(isDarkMode ? 0.35 : 0.12), radius: 10, x: 0, y: 16)
-                                .tag(1)
-                        }
-                        .frame(height: 304)
-                        .tabViewStyle(.page)
-                        .indexViewStyle(.page(backgroundDisplayMode: .interactive))
-                        .padding(.top, 0)
-                        .onReceive(timer) { _ in
-                            withAnimation {
-                                currentTab = (currentTab + 1) % totalTabs
-                            }
-                        }
-                        .onAppear {
-                            // Customize the page control dots to use the app's accent color
-                            UIPageControl.appearance().currentPageIndicatorTintColor = UIColor(accentColor)
-                            UIPageControl.appearance().pageIndicatorTintColor = UIColor(accentColor.opacity(0.25))
-                        }
-
-                        VStack(spacing: 8) {
-                            Text("Preparing Discount Calculator…")
-                                .font(.system(size: 22, weight: .semibold, design: .rounded))
-                                .foregroundStyle(.primary)
-
-                            Text("Making sure everything is ready for you.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
-
-                        // Loading animation
-                        BouncingDots(color: accentColor, isDark: isDarkMode)
-                            .padding(.top, 24)
+                        carouselLogo(sonnazGroupLogoAssetName, isDarkMode: isDarkMode)
+                            .tag(1)
                     }
-                    .padding(24)
+                    .frame(height: 304)
+                    .tabViewStyle(.page)
+                    .indexViewStyle(.page(backgroundDisplayMode: .interactive))
+                    .onReceive(timer) { _ in
+                        withAnimation {
+                            currentTab = (currentTab + 1) % totalTabs
+                        }
+                    }
+                    .onAppear {
+                        // Match the page-control dots to the app's accent color
+                        UIPageControl.appearance().currentPageIndicatorTintColor = UIColor(accentColor)
+                        UIPageControl.appearance().pageIndicatorTintColor = UIColor(accentColor.opacity(0.25))
+                    }
+
+                    VStack(spacing: 8) {
+                        Text("Preparing Discount Calculator…")
+                            .font(.system(size: 22, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+
+                        Text("Making sure everything is ready for you.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    // Loading animation
+                    BouncingDots(color: accentColor, isDark: isDarkMode)
+                        .padding(.top, 24)
                 }
+                .padding(24)
+                .glassCard(accentColor: accentColor, cornerRadius: 32, emphasized: true)
+                .shadow(color: .black.opacity(isDarkMode ? 0.55 : 0.18), radius: 40, x: 0, y: 30)
                 .padding(.horizontal, 24)
 
                 Spacer()
 
-                VStack() {
+                // Branding footer
+                VStack {
                     Text("Sonnaz Group, LLC")
                         .font(.caption)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary.opacity(0.75))
-                    
+
                     Text("© 2026. All Rights Reserved")
                         .font(.caption2)
                         .foregroundColor(.primary.opacity(0.50))
@@ -242,6 +133,17 @@ struct LoadingView: View {
             }
             .frame(maxWidth: 500)
         }
+    }
+
+    // MARK: - Pieces
+
+    private func carouselLogo(_ imageName: String, isDarkMode: Bool) -> some View {
+        Image(imageName)
+            .resizable()
+            .frame(width: 256, height: 256, alignment: .top)
+            .padding(.bottom, 48)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(isDarkMode ? 0.35 : 0.12), radius: 10, x: 0, y: 16)
     }
 }
 
@@ -285,12 +187,8 @@ private struct BouncingDots: View {
 // MARK: - Previews
 
 private struct LoadingPreviewWrapper: View {
-    let themeColor: Int
-    
     init(themeColor: Int) {
-        self.themeColor = themeColor
-        
-        // Map themeColor to a matching app icon name
+        // Map themeColor to a matching app icon name (preview process only)
         let iconName: String
         switch themeColor {
         case 1: iconName = "RedAppIcon"
@@ -299,59 +197,16 @@ private struct LoadingPreviewWrapper: View {
         case 4: iconName = "GreenAppIcon"
         case 5: iconName = "BlueAppIcon"
         case 6: iconName = "PurpleAppIcon"
-        case 7: iconName = "WhiteAppIcon"   // Mono / neutral
-        default:
-            iconName = "WhiteAppIcon"
+        default: iconName = "WhiteAppIcon"   // Mono / neutral
         }
-        
-        // These only affect the preview process
+
         UserDefaults.standard.set(themeColor, forKey: "themeColor")
         UserDefaults.standard.set(iconName, forKey: "selectedAppIconName")
     }
-    
+
     var body: some View {
         LoadingView()
     }
-}
-
-#Preview("Red – Dark") {
-    LoadingPreviewWrapper(themeColor: 1)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Red – Light") {
-    LoadingPreviewWrapper(themeColor: 1)
-        .preferredColorScheme(.light)
-}
-
-#Preview("Orange – Dark") {
-    LoadingPreviewWrapper(themeColor: 2)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Orange – Light") {
-    LoadingPreviewWrapper(themeColor: 2)
-        .preferredColorScheme(.light)
-}
-
-#Preview("Yellow – Dark") {
-    LoadingPreviewWrapper(themeColor: 3)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Yellow – Light") {
-    LoadingPreviewWrapper(themeColor: 3)
-        .preferredColorScheme(.light)
-}
-
-#Preview("Green – Dark") {
-    LoadingPreviewWrapper(themeColor: 4)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Green – Light") {
-    LoadingPreviewWrapper(themeColor: 4)
-        .preferredColorScheme(.light)
 }
 
 #Preview("Blue – Dark") {
@@ -361,16 +216,6 @@ private struct LoadingPreviewWrapper: View {
 
 #Preview("Blue – Light") {
     LoadingPreviewWrapper(themeColor: 5)
-        .preferredColorScheme(.light)
-}
-
-#Preview("Purple – Dark") {
-    LoadingPreviewWrapper(themeColor: 6)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Purple – Light") {
-    LoadingPreviewWrapper(themeColor: 6)
         .preferredColorScheme(.light)
 }
 

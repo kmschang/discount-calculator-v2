@@ -7,18 +7,67 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		278410943003E1BE0047CCA0 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 278410933003E1BE0047CCA0 /* WidgetKit.framework */; };
+		278410963003E1BE0047CCA0 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 278410953003E1BE0047CCA0 /* SwiftUI.framework */; };
+		278410A73003E1BF0047CCA0 /* DiscountCalculatorWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 278410913003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		27AF079D2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 27AF079C2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		278410A53003E1BF0047CCA0 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0ED0092D2DF67DF4004B4CF2 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 278410903003E1BE0047CCA0;
+			remoteInfo = DiscountCalculatorWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		278410A83003E1BF0047CCA0 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				278410A73003E1BF0047CCA0 /* DiscountCalculatorWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		0ED009352DF67DF4004B4CF2 /* Discount Calculator.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Discount Calculator.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		278410913003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = DiscountCalculatorWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		278410933003E1BE0047CCA0 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		278410953003E1BE0047CCA0 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		278410B63003E9DB0047CCA0 /* DiscountCalculatorWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DiscountCalculatorWidgetExtension.entitlements; sourceTree = "<group>"; };
 		27AF079C2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen_Blank.storyboard; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		278410AB3003E1BF0047CCA0 /* Exceptions for "DiscountCalculatorWidget" folder in "DiscountCalculatorWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 278410903003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0ED009372DF67DF4004B4CF2 /* DiscountCalculator */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = DiscountCalculator;
+			sourceTree = "<group>";
+		};
+		278410973003E1BE0047CCA0 /* DiscountCalculatorWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				278410AB3003E1BF0047CCA0 /* Exceptions for "DiscountCalculatorWidget" folder in "DiscountCalculatorWidgetExtension" target */,
+			);
+			path = DiscountCalculatorWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -31,14 +80,26 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2784108E3003E1BE0047CCA0 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				278410963003E1BE0047CCA0 /* SwiftUI.framework in Frameworks */,
+				278410943003E1BE0047CCA0 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		0ED0092C2DF67DF4004B4CF2 = {
 			isa = PBXGroup;
 			children = (
+				278410B63003E9DB0047CCA0 /* DiscountCalculatorWidgetExtension.entitlements */,
 				27AF079C2F71DF2E00B4A593 /* LaunchScreen_Blank.storyboard */,
 				0ED009372DF67DF4004B4CF2 /* DiscountCalculator */,
+				278410973003E1BE0047CCA0 /* DiscountCalculatorWidget */,
+				278410923003E1BE0047CCA0 /* Frameworks */,
 				0ED009362DF67DF4004B4CF2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,8 +108,18 @@
 			isa = PBXGroup;
 			children = (
 				0ED009352DF67DF4004B4CF2 /* Discount Calculator.app */,
+				278410913003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		278410923003E1BE0047CCA0 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				278410933003E1BE0047CCA0 /* WidgetKit.framework */,
+				278410953003E1BE0047CCA0 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -61,10 +132,12 @@
 				0ED009312DF67DF4004B4CF2 /* Sources */,
 				0ED009322DF67DF4004B4CF2 /* Frameworks */,
 				0ED009332DF67DF4004B4CF2 /* Resources */,
+				278410A83003E1BF0047CCA0 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				278410A63003E1BF0047CCA0 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				0ED009372DF67DF4004B4CF2 /* DiscountCalculator */,
@@ -76,6 +149,28 @@
 			productReference = 0ED009352DF67DF4004B4CF2 /* Discount Calculator.app */;
 			productType = "com.apple.product-type.application";
 		};
+		278410903003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 278410AC3003E1BF0047CCA0 /* Build configuration list for PBXNativeTarget "DiscountCalculatorWidgetExtension" */;
+			buildPhases = (
+				2784108D3003E1BE0047CCA0 /* Sources */,
+				2784108E3003E1BE0047CCA0 /* Frameworks */,
+				2784108F3003E1BE0047CCA0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				278410973003E1BE0047CCA0 /* DiscountCalculatorWidget */,
+			);
+			name = DiscountCalculatorWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = DiscountCalculatorWidgetExtension;
+			productReference = 278410913003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -83,11 +178,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1640;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					0ED009342DF67DF4004B4CF2 = {
 						CreatedOnToolsVersion = 16.4;
+					};
+					278410903003E1BE0047CCA0 = {
+						CreatedOnToolsVersion = 26.6;
 					};
 				};
 			};
@@ -106,6 +204,7 @@
 			projectRoot = "";
 			targets = (
 				0ED009342DF67DF4004B4CF2 /* Discount Calculator */,
+				278410903003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -119,6 +218,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2784108F3003E1BE0047CCA0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -129,7 +235,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		2784108D3003E1BE0047CCA0 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		278410A63003E1BF0047CCA0 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 278410903003E1BE0047CCA0 /* DiscountCalculatorWidgetExtension */;
+			targetProxy = 278410A53003E1BF0047CCA0 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		0ED0093E2DF67DF6004B4CF2 /* Debug */ = {
@@ -261,6 +382,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = DiscountCalculator/DiscountCalculator.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GKM5JVVJFH;
@@ -268,6 +390,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Discounter;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location is used only to find your state's sales tax rate. It never leaves your device.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -298,6 +421,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = DiscountCalculator/DiscountCalculator.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GKM5JVVJFH;
@@ -305,6 +429,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Discounter;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Your location is used only to find your state's sales tax rate. It never leaves your device.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -329,6 +454,70 @@
 			};
 			name = Release;
 		};
+		278410A93003E1BF0047CCA0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = DiscountCalculatorWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GKM5JVVJFH;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DiscountCalculatorWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DiscountCalculatorWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.schang.Discount-Calculator.DiscountCalculatorWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		278410AA3003E1BF0047CCA0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = DiscountCalculatorWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GKM5JVVJFH;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = DiscountCalculatorWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = DiscountCalculatorWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.schang.Discount-Calculator.DiscountCalculatorWidget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -346,6 +535,15 @@
 			buildConfigurations = (
 				0ED009412DF67DF6004B4CF2 /* Debug */,
 				0ED009422DF67DF6004B4CF2 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		278410AC3003E1BF0047CCA0 /* Build configuration list for PBXNativeTarget "DiscountCalculatorWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				278410A93003E1BF0047CCA0 /* Debug */,
+				278410AA3003E1BF0047CCA0 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
