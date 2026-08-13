@@ -15,18 +15,17 @@ struct AccentColorSettingsView: View {
     private struct ColorOption: Identifiable {
         let id: Int
         let name: String
-        let baseColor: Color
         let themeImageName: String
     }
 
     private let options: [ColorOption] = [
-        ColorOption(id: 1, name: "Red", baseColor: .red, themeImageName: "RedTheme"),
-        ColorOption(id: 2, name: "Orange", baseColor: .orange, themeImageName: "OrangeTheme"),
-        ColorOption(id: 3, name: "Yellow", baseColor: .yellow, themeImageName: "YellowTheme"),
-        ColorOption(id: 4, name: "Green", baseColor: .green, themeImageName: "GreenTheme"),
-        ColorOption(id: 5, name: "Blue", baseColor: .blue, themeImageName: "BlueTheme"),
-        ColorOption(id: 6, name: "Purple", baseColor: .purple, themeImageName: "PurpleTheme"),
-        ColorOption(id: 7, name: "Black / White", baseColor: .primary, themeImageName: "BlackTheme")
+        ColorOption(id: 1, name: "Red", themeImageName: "RedTheme"),
+        ColorOption(id: 2, name: "Orange", themeImageName: "OrangeTheme"),
+        ColorOption(id: 3, name: "Yellow", themeImageName: "YellowTheme"),
+        ColorOption(id: 4, name: "Green", themeImageName: "GreenTheme"),
+        ColorOption(id: 5, name: "Blue", themeImageName: "BlueTheme"),
+        ColorOption(id: 6, name: "Purple", themeImageName: "PurpleTheme"),
+        ColorOption(id: 7, name: "Black / White", themeImageName: "BlackTheme")
     ]
 
     private var colorOptions: [ColorOption] {
@@ -46,7 +45,10 @@ struct AccentColorSettingsView: View {
                             displayName: option.name,
                             imageName: option.themeImageName,
                             isSelected: themeColor == option.id,
-                            accentColor: option.baseColor
+                            accentColor: AppTheme.paletteColor(
+                                themeColor: option.id,
+                                colorScheme: systemColorScheme
+                            )
                         ) {
                             themeColor = option.id
                             dismiss()
@@ -81,7 +83,7 @@ struct AccentColorSettingsView: View {
     }
 
     private var monoPreviewColor: Color {
-        systemColorScheme == .dark ? .white : .black
+        AppTheme.paletteColor(themeColor: 7, colorScheme: systemColorScheme)
     }
 }
 
@@ -164,4 +166,3 @@ private struct AccentColorPreviewCard: View {
             .background(Color(.systemGroupedBackground))
     }
 }
-

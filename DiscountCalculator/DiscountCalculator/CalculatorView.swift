@@ -1,9 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// The single main screen, redesigned around typed input instead of a keypad:
-/// a pinned "You Pay" hero card, then Price / Discounts / Sales Tax cards whose
-/// number fields use the system decimal keyboard. Everything lives on one page.
+/// The calculator's main workspace. The result stays visible while the editable
+/// receipt below it scrolls, so changes always have immediate visual feedback.
 struct CalculatorView: View {
     @Environment(CalculatorStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
@@ -33,11 +32,23 @@ struct CalculatorView: View {
     }
 
     private var accentColor: Color {
-        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: colorScheme)
+        AppTheme.accentColor(
+            themeColor: themeColor,
+            appearanceMode: appearanceMode,
+            systemScheme: colorScheme
+        )
     }
 
     private var result: CalculationResult {
         store.result(roundToCents: roundToCents, taxOnOriginal: taxOnOriginal)
+    }
+
+    private var positiveColor: Color {
+        AppTheme.positiveColor
+    }
+
+    private var negativeColor: Color {
+        AppTheme.negativeColor
     }
 
     private var currencyCode: String { AppFormat.currencyCode }
@@ -47,31 +58,36 @@ struct CalculatorView: View {
 
         ZStack {
             CalculatorBackground(accentColor: accentColor, colorScheme: colorScheme)
+                .allowsHitTesting(false)
 
-            VStack(spacing: 14) {
-                // The answer stays pinned on top; the input cards scroll under it
-                // when the keyboard is up.
-                heroCard
-
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        priceCard($store)
-                        discountsCard($store)
-                        taxCard($store)
-                    }
-                    .padding(.bottom, 12)
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    resultCard
+                    priceCard($store)
+                    discountsCard($store)
+                    taxCard($store)
                 }
-                .scrollDismissesKeyboard(.interactively)
+                .padding(.horizontal, 16)
+                .padding(.top, 6)
+                .padding(.bottom, 18)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color.clear)
             .animation(.snappy, value: store.discounts)
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") { focusedField = nil }
-                    .font(.headline)
+                VStack(spacing: 0) {
+                    Button("Done") { focusedField = nil }
+                        .font(.headline)
+
+                    // Keep this outside the button so the keyboard accessory's
+                    // glass control ends before the keypad begins.
+                    Color.clear
+                        .frame(height: 7)
+                        .accessibilityHidden(true)
+                }
             }
         }
         .onAppear(perform: restoreSavedTax)
@@ -85,160 +101,209 @@ struct CalculatorView: View {
         }
     }
 
-    // MARK: - Hero (the big answer + breakdown)
+    // MARK: - Result
 
-    private var heroCard: some View {
-        VStack(spacing: 10) {
-            HStack {
-                Text("You Pay")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Button {
-                    copyTotal()
-                } label: {
-                    Label(justCopied ? "Copied" : "Copy",
-                          systemImage: justCopied ? "checkmark" : "doc.on.doc")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(accentColor)
+    private var resultCard: some View {
+        VStack(spacing: 14) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("FINAL PRICE")
+                        .font(.caption2.weight(.bold))
+                        .tracking(1.2)
+                        .foregroundStyle(.secondary)
+
+                    if result.savings > 0 {
+                        Label(
+                            "\(AppFormat.percent(result.effectiveDiscountPercent))% saved",
+                            systemImage: "arrow.down.right"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(positiveColor)
+                        .contentTransition(.numericText())
+                    } else {
+                        Text("Your total updates as you type")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
-                .buttonStyle(.plain)
-                .disabled(result.total <= 0)
-                .opacity(result.total <= 0 ? 0.4 : 1)
 
-                Button {
+                Spacer(minLength: 8)
+
+                resultAction(
+                    systemName: justCopied ? "checkmark" : "doc.on.doc",
+                    accessibilityLabel: justCopied ? "Copied" : "Copy total",
+                    isEnabled: result.total > 0,
+                    action: copyTotal
+                )
+
+                resultAction(
+                    systemName: "arrow.counterclockwise",
+                    accessibilityLabel: "Start over",
+                    isEnabled: store.hasInput
+                ) {
                     withAnimation(.snappy) { store.startOver() }
                     focusedField = nil
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(accentColor)
                 }
-                .buttonStyle(.plain)
-                .padding(.leading, 6)
-                .disabled(!store.hasInput)
-                .opacity(store.hasInput ? 1 : 0.4)
-                .accessibilityLabel("Start over")
             }
 
-            // Fixed-height box so a long total scales down instead of moving
-            // the cards below.
             Text(result.total, format: .currency(code: currencyCode))
-                .font(.system(size: 58, weight: .bold, design: .rounded))
-                .foregroundStyle(accentColor)
-                .minimumScaleFactor(0.4)
+                .font(.system(size: 56, weight: .bold, design: .rounded))
+                .foregroundStyle(.primary)
+                .minimumScaleFactor(0.42)
                 .lineLimit(1)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: result.total)
-                .frame(maxWidth: .infinity, minHeight: 66, maxHeight: 66)
+                .frame(maxWidth: .infinity, minHeight: 62, maxHeight: 62)
 
-            breakdownRow
+            HStack(spacing: 0) {
+                resultMetric(
+                    title: "LIST PRICE",
+                    value: result.original,
+                    strikethrough: result.savings > 0
+                )
+                metricDivider
+                resultMetric(title: "DISCOUNT", value: result.savings, positive: result.savings > 0)
+                metricDivider
+                resultMetric(
+                    title: taxMetricTitle,
+                    value: result.taxAmount,
+                    negative: result.taxAmount > 0
+                )
+            }
+            .padding(.vertical, 10)
+            .background(insetSurface, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .padding(18)
         .frame(maxWidth: .infinity)
-        .glassCard(accentColor: accentColor, cornerRadius: 28, emphasized: true)
+        .glassCard(accentColor: accentColor, cornerRadius: 30, emphasized: true)
+        .accessibilityElement(children: .contain)
     }
 
-    /// Always-visible one-line breakdown: what it was, what you save, the tax.
-    private var breakdownRow: some View {
-        HStack(spacing: 8) {
-            breakdownItem(label: "Before",
-                          value: result.original,
-                          tint: .secondary,
-                          strikethrough: result.savings > 0)
-            breakdownDivider
-            breakdownItem(label: savingsLabel,
-                          value: result.savings,
-                          tint: result.savings > 0 ? .green : .secondary)
-            breakdownDivider
-            breakdownItem(label: taxBreakdownLabel,
-                          value: result.taxAmount,
-                          tint: result.taxAmount > 0 ? .primary : .secondary)
+    private func resultAction(
+        systemName: String,
+        accessibilityLabel: String,
+        isEnabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(accentColor)
+                .frame(width: 38, height: 38)
+                .background(insetSurface, in: Circle())
+                .contentShape(Circle())
         }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.35)
+        .accessibilityLabel(accessibilityLabel)
     }
 
-    private var savingsLabel: String {
-        result.savings > 0 ? "You Save (\(AppFormat.percent(result.effectiveDiscountPercent))%)" : "You Save"
+    private var taxMetricTitle: String {
+        result.taxRatePercent > 0
+            ? "TAX · \(AppFormat.percent(result.taxRatePercent))%"
+            : "TAX"
     }
 
-    private var taxBreakdownLabel: String {
-        result.taxRatePercent > 0 ? "Tax (\(AppFormat.percent(result.taxRatePercent))%)" : "Tax"
-    }
-
-    private var breakdownDivider: some View {
+    private var metricDivider: some View {
         Rectangle()
-            .fill(accentColor.opacity(0.2))
+            .fill(.primary.opacity(0.09))
             .frame(width: 1, height: 30)
     }
 
-    private func breakdownItem(label: String, value: Double, tint: Color, strikethrough: Bool = false) -> some View {
-        VStack(spacing: 2) {
-            Text(label)
-                .font(.caption)
+    private func resultMetric(
+        title: String,
+        value: Double,
+        positive: Bool = false,
+        negative: Bool = false,
+        strikethrough: Bool = false
+    ) -> some View {
+        VStack(spacing: 3) {
+            Text(title)
+                .font(.system(size: 9, weight: .bold))
+                .tracking(0.5)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
+
             Text(value, format: .currency(code: currencyCode))
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(tint)
+                .foregroundStyle(positive ? positiveColor : (negative ? negativeColor : Color.primary))
                 .strikethrough(strikethrough)
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.55)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: value)
         }
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Price card
+    // MARK: - Price
 
     private func priceCard(_ store: Bindable<CalculatorStore>) -> some View {
-        HStack(spacing: 12) {
-            cardIcon("cart.fill")
-            Text("Price")
-                .font(.headline)
-            Spacer()
-            Text(AppFormat.currencySymbol)
-                .font(.system(.title3, design: .rounded).weight(.semibold))
-                .foregroundStyle(.secondary)
-            TextField("0", text: store.priceText)
-                .keyboardType(.decimalPad)
-                .focused($focusedField, equals: .price)
-                .font(.system(.title2, design: .rounded).weight(.bold))
-                .multilineTextAlignment(.trailing)
-                .frame(maxWidth: 150)
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(icon: "cart.fill", title: "Original Price", eyebrow: "START HERE")
+
+            HStack(spacing: 10) {
+                Text(AppFormat.currencySymbol)
+                    .font(.system(.title2, design: .rounded).weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                TextField("0.00", text: store.priceText)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .price)
+                    .font(.system(size: 30, weight: .bold, design: .rounded))
+                    .multilineTextAlignment(.trailing)
+                    .minimumScaleFactor(0.7)
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 62)
+            .background(insetSurface, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 17, style: .continuous)
+                    .stroke(focusedField == .price ? accentColor.opacity(0.7) : .clear, lineWidth: 1.5)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { focusedField = .price }
         }
-        .padding(16)
-        .contentShape(Rectangle())
-        .onTapGesture { focusedField = .price }
-        .glassCard(accentColor: accentColor, cornerRadius: 20)
+        .sectionCard(accentColor: accentColor)
     }
 
-    // MARK: - Discounts card
+    // MARK: - Discounts
 
     private func discountsCard(_ store: Bindable<CalculatorStore>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                cardIcon("tag.fill")
-                Text("Discounts")
-                    .font(.headline)
+            HStack(alignment: .center) {
+                sectionHeader(icon: "tag.fill", title: "Discounts", eyebrow: "STACK UP TO FOUR")
                 Spacer()
                 if result.savings > 0 {
                     Text("−\(AppFormat.percent(result.effectiveDiscountPercent))%")
                         .font(.subheadline.weight(.bold))
-                        .foregroundStyle(.green)
+                        .foregroundStyle(positiveColor)
                         .monospacedDigit()
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(positiveColor.opacity(0.11), in: Capsule())
                 }
             }
 
             if self.store.discounts.isEmpty {
-                Text("Add up to 4 — percent or dollars off.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            ForEach(store.discounts) { $entry in
-                discountRow($entry)
+                VStack(spacing: 8) {
+                    Image(systemName: "tag.slash")
+                        .font(.title3)
+                        .foregroundStyle(.tertiary)
+                    Text("No discounts added")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(store.discounts) { $entry in
+                        discountRow($entry)
+                    }
+                }
             }
 
             if self.store.canAddDiscount {
@@ -249,24 +314,30 @@ struct CalculatorView: View {
                         }
                     }
                 } label: {
-                    Label("Add Discount", systemImage: "plus.circle.fill")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(accentColor)
-                        .padding(.vertical, 4)
-                        .contentShape(Rectangle())
+                    Label(
+                        self.store.discounts.isEmpty ? "Add a Discount" : "Add Another Discount",
+                        systemImage: "plus"
+                    )
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(accentColor)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 44)
+                    .background(accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
 
             if self.store.discounts.filter({ $0.kind == .percent }).count >= 2 {
-                Text("Stacked percents multiply: 20% then 10% takes 28% off, not 30%.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Label(
+                    "Percent discounts compound in the order shown.",
+                    systemImage: "info.circle.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(accentColor: accentColor, cornerRadius: 20)
+        .sectionCard(accentColor: accentColor)
     }
 
     private func discountRow(_ entry: Binding<DiscountEntry>) -> some View {
@@ -278,96 +349,137 @@ struct CalculatorView: View {
             .pickerStyle(.segmented)
             .frame(width: 92)
 
-            if entry.wrappedValue.kind == .amount {
-                Text(AppFormat.currencySymbol)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-            }
+            HStack(spacing: 5) {
+                if entry.wrappedValue.kind == .amount {
+                    Text(AppFormat.currencySymbol)
+                        .foregroundStyle(.secondary)
+                }
 
-            TextField(entry.wrappedValue.kind == .percent ? "20" : "5.00", text: entry.valueText)
+                TextField(
+                    entry.wrappedValue.kind == .percent ? "20" : "5.00",
+                    text: entry.valueText
+                )
                 .keyboardType(.decimalPad)
                 .focused($focusedField, equals: .discount(entry.wrappedValue.id))
                 .font(.system(.title3, design: .rounded).weight(.semibold))
-                .frame(width: 84)
+                .multilineTextAlignment(.trailing)
 
-            if entry.wrappedValue.kind == .percent {
-                Text("%")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                if entry.wrappedValue.kind == .percent {
+                    Text("%")
+                        .foregroundStyle(.secondary)
+                }
             }
-
-            Spacer(minLength: 0)
+            .font(.headline)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity)
+            .frame(height: 42)
+            .background(insetSurface, in: RoundedRectangle(cornerRadius: 13, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .stroke(
+                        focusedField == .discount(entry.wrappedValue.id)
+                            ? accentColor.opacity(0.7)
+                            : .clear,
+                        lineWidth: 1.5
+                    )
+            }
 
             Button {
                 withAnimation(.snappy) { store.removeDiscount(entry.wrappedValue) }
             } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title3)
+                Image(systemName: "minus")
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(.secondary)
+                    .frame(width: 30, height: 30)
+                    .background(.primary.opacity(0.07), in: Circle())
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Remove discount")
         }
     }
 
-    // MARK: - Tax card
+    // MARK: - Sales tax
 
     private func taxCard(_ store: Bindable<CalculatorStore>) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                cardIcon("building.columns.fill")
-                Text("Sales Tax")
-                    .font(.headline)
-                Spacer()
-                Button {
-                    isStatePickerPresented = true
-                } label: {
-                    HStack(spacing: 4) {
+            sectionHeader(
+                icon: "building.columns.fill",
+                title: "Sales Tax",
+                eyebrow: "OPTIONAL"
+            )
+
+            Button {
+                isStatePickerPresented = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: self.store.taxState == nil ? "map" : "mappin.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(accentColor)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Tax location")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         Text(taxSourceLabel)
-                            .font(.subheadline.weight(.bold))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
                             .lineLimit(1)
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption2.weight(.bold))
                     }
-                    .foregroundStyle(accentColor)
-                    .contentShape(Rectangle())
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.tertiary)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Pick a state")
+                .padding(.horizontal, 14)
+                .frame(height: 56)
+                .background(insetSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Pick a state")
 
             HStack(spacing: 10) {
-                TextField("0", text: store.taxRateText)
-                    .keyboardType(.decimalPad)
-                    .focused($focusedField, equals: .tax)
-                    .font(.system(.title3, design: .rounded).weight(.semibold))
-                    .frame(width: 84)
-                Text("%")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 5) {
+                    TextField("0", text: store.taxRateText)
+                        .keyboardType(.decimalPad)
+                        .focused($focusedField, equals: .tax)
+                        .font(.system(.title3, design: .rounded).weight(.semibold))
+                        .multilineTextAlignment(.trailing)
+                    Text("%")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity)
+                .frame(height: 46)
+                .background(insetSurface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(focusedField == .tax ? accentColor.opacity(0.7) : .clear, lineWidth: 1.5)
+                }
 
-                Spacer()
-
-                Button {
-                    detectLocation()
-                } label: {
-                    HStack(spacing: 6) {
+                Button(action: detectLocation) {
+                    HStack(spacing: 7) {
                         if location.isResolving {
                             ProgressView()
                                 .controlSize(.small)
                         } else {
                             Image(systemName: "location.fill")
                         }
-                        Text("Local")
+                        Text("Use Local")
                     }
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(accentColor)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .contentShape(Capsule())
+                    .padding(.horizontal, 15)
+                    .frame(height: 46)
+                    .background(accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .glassCard(accentColor: accentColor, cornerRadius: 16, emphasized: true)
                 .disabled(location.isResolving)
                 .accessibilityLabel("Use my location for sales tax")
             }
@@ -375,15 +487,14 @@ struct CalculatorView: View {
             Text(taxStatusLine)
                 .font(.caption)
                 .foregroundStyle(location.lastError == nil ? Color.secondary : Color.red)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassCard(accentColor: accentColor, cornerRadius: 20)
+        .sectionCard(accentColor: accentColor)
     }
 
     private var taxSourceLabel: String {
         if let state = store.taxState { return state.name }
-        return store.taxRatePercent > 0 ? "Custom" : "Pick a state"
+        return store.taxRatePercent > 0 ? "Custom rate" : "Choose a state"
     }
 
     private var taxStatusLine: String {
@@ -391,10 +502,10 @@ struct CalculatorView: View {
         if let error = location.lastError { return error }
         if let state = store.taxState {
             if state.hasNoStateSalesTax { return "\(state.name) has no state sales tax." }
-            return "\(state.name) state rate. Cities can add a bit — edit it to match your receipt."
+            return "Using the \(state.name) base rate. Local rates may vary."
         }
-        if store.taxRatePercent > 0 { return "Custom rate. Tap Local to switch back to your state's rate." }
-        return "Type a rate, pick a state, or tap Local to use your location."
+        if store.taxRatePercent > 0 { return "Using a custom rate. Use Local to restore your state's rate." }
+        return "Enter a rate, choose a state, or use your current location."
     }
 
     private func detectLocation() {
@@ -407,7 +518,7 @@ struct CalculatorView: View {
         }
     }
 
-    // MARK: - State picker sheet
+    // MARK: - State picker
 
     private var statePickerSheet: some View {
         NavigationStack {
@@ -430,13 +541,34 @@ struct CalculatorView: View {
         .presentationDragIndicator(.visible)
     }
 
-    // MARK: - Shared bits
+    // MARK: - Shared presentation
 
-    private func cardIcon(_ systemName: String) -> some View {
-        Image(systemName: systemName)
-            .font(.body.weight(.semibold))
-            .foregroundStyle(accentColor)
-            .frame(width: 24)
+    private var insetSurface: Color {
+        colorScheme == .dark ? Color.white.opacity(0.065) : Color.black.opacity(0.045)
+    }
+
+    private func sectionHeader(
+        icon: String,
+        title: String,
+        eyebrow: String
+    ) -> some View {
+        return HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(accentColor)
+                .frame(width: 34, height: 34)
+                .background(accentColor.opacity(0.10), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(eyebrow)
+                    .font(.system(size: 9, weight: .bold))
+                    .tracking(0.7)
+                    .foregroundStyle(.tertiary)
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+            }
+        }
     }
 
     // MARK: - Tax persistence
@@ -473,6 +605,15 @@ struct CalculatorView: View {
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             await MainActor.run { withAnimation(.snappy) { justCopied = false } }
         }
+    }
+}
+
+private extension View {
+    func sectionCard(accentColor: Color) -> some View {
+        self
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassCard(accentColor: accentColor, cornerRadius: 22)
     }
 }
 

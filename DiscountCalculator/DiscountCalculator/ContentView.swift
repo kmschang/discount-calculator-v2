@@ -61,6 +61,7 @@ struct ContentView: View {
         }
         .environment(store)
         .task {
+            guard !AppRuntime.isRunningForPreviews else { return }
             maybeAutoDetectState()
         }
     }
@@ -84,6 +85,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(appColorScheme)
         .task {
+            guard !AppRuntime.isRunningForPreviews else { return }
             if isShowingLoading {
                 let delaySeconds = Double.random(in: 1...2)
                 let delayNanoseconds = UInt64(delaySeconds * 1_000_000_000)

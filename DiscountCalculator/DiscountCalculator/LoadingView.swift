@@ -15,16 +15,27 @@ struct LoadingView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var storedThemeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
-    @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
+
+    private let previewThemeColor: Int?
+    private let animates: Bool
 
     private let totalTabs = 2
+
+    init(previewThemeColor: Int? = nil, animates: Bool = true) {
+        self.previewThemeColor = previewThemeColor
+        self.animates = animates
+    }
 
     // MARK: - Theme
 
     private var accentColor: Color {
         AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: colorScheme)
+    }
+
+    private var themeColor: Int {
+        previewThemeColor ?? storedThemeColor
     }
 
     // Appearance/tint tokens for logo asset naming
@@ -81,11 +92,13 @@ struct LoadingView: View {
                     .tabViewStyle(.page)
                     .indexViewStyle(.page(backgroundDisplayMode: .interactive))
                     .onReceive(timer) { _ in
+                        guard animates else { return }
                         withAnimation {
                             currentTab = (currentTab + 1) % totalTabs
                         }
                     }
                     .onAppear {
+                        guard !AppRuntime.isRunningForPreviews else { return }
                         // Match the page-control dots to the app's accent color
                         UIPageControl.appearance().currentPageIndicatorTintColor = UIColor(accentColor)
                         UIPageControl.appearance().pageIndicatorTintColor = UIColor(accentColor.opacity(0.25))
@@ -102,7 +115,7 @@ struct LoadingView: View {
                     }
 
                     // Loading animation
-                    BouncingDots(color: accentColor, isDark: isDarkMode)
+                    BouncingDots(color: accentColor, isDark: isDarkMode, animates: animates)
                         .padding(.top, 24)
                 }
                 .padding(24)
@@ -152,6 +165,7 @@ struct LoadingView: View {
 private struct BouncingDots: View {
     let color: Color
     let isDark: Bool
+    let animates: Bool
     @State private var animate = false
 
     var body: some View {
@@ -161,15 +175,15 @@ private struct BouncingDots: View {
                     .fill(
                         LinearGradient(
                             colors: [
-                                color.opacity(isDark ? 0.95 : 0.9),
-                                color.opacity(isDark ? 0.6 : 0.55)
+                                color.opacity(isDark ? 0.80 : 0.76),
+                                color.opacity(isDark ? 0.52 : 0.46)
                             ],
                             startPoint: .top,
                             endPoint: .bottom
                         )
                     )
                     .frame(width: 10, height: 10)
-                    .shadow(color: color.opacity(isDark ? 0.5 : 0.25), radius: 6, x: 0, y: 2)
+                    .shadow(color: color.opacity(isDark ? 0.28 : 0.16), radius: 5, x: 0, y: 2)
                     .offset(y: animate ? -6 : 6)
                     .animation(
                         Animation.easeInOut(duration: 0.6)
@@ -180,51 +194,31 @@ private struct BouncingDots: View {
             }
         }
         .frame(height: 24)
-        .onAppear { animate = true }
+        .onAppear {
+            guard animates else { return }
+            animate = true
+        }
     }
 }
 
 // MARK: - Previews
 
-private struct LoadingPreviewWrapper: View {
-    init(themeColor: Int) {
-        // Map themeColor to a matching app icon name (preview process only)
-        let iconName: String
-        switch themeColor {
-        case 1: iconName = "RedAppIcon"
-        case 2: iconName = "OrangeAppIcon"
-        case 3: iconName = "YellowAppIcon"
-        case 4: iconName = "GreenAppIcon"
-        case 5: iconName = "BlueAppIcon"
-        case 6: iconName = "PurpleAppIcon"
-        default: iconName = "WhiteAppIcon"   // Mono / neutral
-        }
-
-        UserDefaults.standard.set(themeColor, forKey: "themeColor")
-        UserDefaults.standard.set(iconName, forKey: "selectedAppIconName")
-    }
-
-    var body: some View {
-        LoadingView()
-    }
-}
-
 #Preview("Blue – Dark") {
-    LoadingPreviewWrapper(themeColor: 5)
+    LoadingView(previewThemeColor: 5, animates: false)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Blue – Light") {
-    LoadingPreviewWrapper(themeColor: 5)
+    LoadingView(previewThemeColor: 5, animates: false)
         .preferredColorScheme(.light)
 }
 
 #Preview("Mono – Dark") {
-    LoadingPreviewWrapper(themeColor: 7)
+    LoadingView(previewThemeColor: 7, animates: false)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Mono – Light") {
-    LoadingPreviewWrapper(themeColor: 7)
+    LoadingView(previewThemeColor: 7, animates: false)
         .preferredColorScheme(.light)
 }

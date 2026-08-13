@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum AppRuntime {
+    static let isRunningForPreviews =
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+}
+
 // MARK: - Theme resolution
 // Centralizes the accent-color / appearance logic that the whole app shares,
 // matching the Day Calculator theming system (themeColor 1...6 = colors, 7 = mono).
@@ -18,6 +23,16 @@ enum AppTheme {
     }
 
     static func accentColor(themeColor: Int, appearanceMode: Int, systemScheme: ColorScheme) -> Color {
+        paletteColor(
+            themeColor: themeColor,
+            colorScheme: effectiveScheme(appearanceMode: appearanceMode, systemScheme: systemScheme)
+        )
+    }
+
+    /// Matches the true colors shown by the theme picker and app-icon artwork.
+    /// The interface stays quiet by using this color sparingly rather than by
+    /// changing the color itself.
+    static func paletteColor(themeColor: Int, colorScheme: ColorScheme) -> Color {
         switch themeColor {
         case 1: return .red
         case 2: return .orange
@@ -25,17 +40,18 @@ enum AppTheme {
         case 4: return .green
         case 5: return .blue
         case 6: return .purple
-        case 7:
-            return effectiveScheme(appearanceMode: appearanceMode, systemScheme: systemScheme) == .dark ? .white : .black
-        default:
-            return .accentColor
+        case 7: return colorScheme == .dark ? .white : .black
+        default: return .blue
         }
     }
+
+    static let positiveColor = Color.green
+    static let negativeColor = Color.red
 }
 
 // MARK: - Shared background
-// The Day Calculator-style ambient background: a soft gradient with two blurred
-// accent/neutral blobs. Used behind every primary screen for a consistent feel.
+// A neutral ambient background shared by every primary screen. Accent color is
+// intentionally reserved for small controls and selection states.
 
 struct CalculatorBackground: View {
     var accentColor: Color
@@ -46,22 +62,22 @@ struct CalculatorBackground: View {
         ZStack {
             LinearGradient(
                 colors: isDark
-                    ? [Color.black, Color(red: 0.04, green: 0.05, blue: 0.09)]
-                    : [Color(red: 0.94, green: 0.96, blue: 1.0), Color.white],
+                    ? [Color.black, Color(red: 0.055, green: 0.055, blue: 0.06)]
+                    : [Color(red: 0.96, green: 0.96, blue: 0.97), Color.white],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
             Circle()
-                .fill(LinearGradient(colors: [accentColor.opacity(0.40), .clear],
+                .fill(LinearGradient(colors: [Color.primary.opacity(isDark ? 0.045 : 0.025), .clear],
                                      startPoint: .topLeading, endPoint: .bottomTrailing))
                 .frame(width: 300, height: 300)
                 .blur(radius: 80)
                 .offset(x: -130, y: -300)
 
             Circle()
-                .fill(LinearGradient(colors: [accentColor.opacity(0.22), .clear],
+                .fill(LinearGradient(colors: [Color.secondary.opacity(isDark ? 0.035 : 0.02), .clear],
                                      startPoint: .bottomTrailing, endPoint: .topLeading))
                 .frame(width: 280, height: 280)
                 .blur(radius: 90)
@@ -71,17 +87,15 @@ struct CalculatorBackground: View {
 }
 
 // MARK: - Glass card
-// The reusable "liquid glass" surface. Prefers the iOS 26 glass effect, with a
-// material + accent-stroke fallback for older systems.
+// The reusable "liquid glass" surface. These are visual containers rather than
+// controls; buttons inside them provide their own press feedback.
 
 extension View {
     @ViewBuilder
     func glassCard(accentColor: Color, cornerRadius: CGFloat = 22, emphasized: Bool = false) -> some View {
         if #available(iOS 26.0, *) {
             self.glassEffect(
-                .regular
-                    .tint(accentColor.opacity(emphasized ? 0.25 : 0.14))
-                    .interactive(),
+                .regular,
                 in: .rect(cornerRadius: cornerRadius)
             )
         } else {
@@ -89,7 +103,7 @@ extension View {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(accentColor.opacity(emphasized ? 0.45 : 0.22), lineWidth: 1)
+                        .stroke(Color.primary.opacity(emphasized ? 0.16 : 0.10), lineWidth: 1)
                 }
         }
     }

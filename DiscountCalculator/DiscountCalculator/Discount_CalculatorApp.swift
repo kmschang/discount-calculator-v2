@@ -6,6 +6,7 @@ struct Discount_CalculatorApp: App {
         WindowGroup {
             ContentView()
                 .task {
+                    guard !AppRuntime.isRunningForPreviews else { return }
                     ICloudSyncManager.shared.start()
                 }
         }

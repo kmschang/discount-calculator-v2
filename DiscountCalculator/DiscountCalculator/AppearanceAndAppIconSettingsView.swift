@@ -59,19 +59,7 @@ struct AppIconSettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     
     private var accentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            // Mono accent: black in light mode, white in dark mode
-            return colorScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+        AppTheme.paletteColor(themeColor: themeColor, colorScheme: colorScheme)
     }
     
     var body: some View {
@@ -122,6 +110,7 @@ struct AppIconSettingsView: View {
             }
         }
         .onAppear {
+            guard !AppRuntime.isRunningForPreviews else { return }
             syncSelectedIconFromSystem()
         }
         .alert(
@@ -388,19 +377,7 @@ struct AppearanceModeSettingsView: View {
     @Environment(\.colorScheme) private var systemColorScheme
 
     private var accentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            // Mono accent for previews: black in light, white in dark
-            return systemColorScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+        AppTheme.paletteColor(themeColor: themeColor, colorScheme: systemColorScheme)
     }
 
     var body: some View {
@@ -478,8 +455,8 @@ struct AppearancePreviewCard: View {
                         .fill(
                             LinearGradient(
                                 colors: isDark
-                                    ? [Color.black, Color(red: 0.05, green: 0.05, blue: 0.12)]
-                                    : [Color.white, Color(red: 0.94, green: 0.96, blue: 1.0)],
+                                    ? [Color.black, Color(red: 0.055, green: 0.055, blue: 0.06)]
+                                    : [Color.white, Color(red: 0.96, green: 0.96, blue: 0.97)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -489,16 +466,20 @@ struct AppearancePreviewCard: View {
                         .overlay(
                             RoundedRectangle(cornerRadius: 18, style: .continuous)
                                 .strokeBorder(
-                                    isSelected ? accentColor.opacity(0.6) : Color.primary.opacity(0.2),
+                                    isSelected ? accentColor.opacity(0.45) : Color.primary.opacity(0.2),
                                     lineWidth: isSelected ? 2 : 1
                                 )
                         )
                     
-                    // Accent-colored blobs to preview the main screen look
+                    // Neutral ambient light, matching the app's mostly
+                    // colorless canvas. The selected border carries the accent.
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [accentColor.opacity(0.45), Color.clear],
+                                colors: [
+                                    (isDark ? Color.white : Color.black).opacity(0.07),
+                                    Color.clear
+                                ],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
