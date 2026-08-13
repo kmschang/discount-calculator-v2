@@ -2,9 +2,9 @@
 //  InfoView.swift
 //  DiscountCalculator
 //
-//  About screen styled after Day Calculator: glass card with app icon,
-//  version/build info, developer credit, tappable company logo grid,
-//  and external-link confirmation.
+//  About sheet, redesigned: app identity up top, a short "how it works"
+//  walkthrough (this is the app's only help screen), a privacy note, and
+//  links — with the external-link confirmation kept.
 //
 
 import SwiftUI
@@ -18,45 +18,11 @@ struct InfoView: View {
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
     @AppStorage("suppressExternalLinkWarning") private var suppressExternalLinkWarning: Bool = false
 
-    @State private var showDiscountDestinationOptions: Bool = false
     @State private var showExternalLinkWarningAlert: Bool = false
     @State private var pendingExternalURL: URL? = nil
 
-    // MARK: - Theme
-
     private var accentColor: Color {
         AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: colorScheme)
-    }
-
-    // Appearance/tint tokens for logo asset naming
-    private var appearanceToken: String { colorScheme == .dark ? "Dark" : "Light" }
-
-    private var tintToken: String {
-        switch themeColor {
-        case 1: return "Red"
-        case 2: return "Orange"
-        case 3: return "Yellow"
-        case 4: return "Green"
-        case 5: return "Blue"
-        case 6: return "Purple"
-        case 7: return colorScheme == .dark ? "White" : "Black"
-        default: return colorScheme == .dark ? "White" : "Black"
-        }
-    }
-
-    private var sonnazGroupLogoAssetName: String {
-        "SonnazGroupLogo(\(appearanceToken))(\(tintToken))"
-    }
-
-    private var quickerTipperLogoAssetName: String {
-        "QuickerTipperLogo(\(appearanceToken))(\(tintToken))"
-    }
-
-    private var discountCalculatorLogoAssetName: String {
-        discountCalculatorLogoName(
-            appearance: discountCalculatorLogoAppearance(for: colorScheme),
-            color: tintToken
-        )
     }
 
     /// Logo variant that matches the user's currently selected app icon.
@@ -74,8 +40,12 @@ struct InfoView: View {
     private let privacyURL = URL(string: "https://www.sonnazgroup.com/privacy")
     private let termsURL = URL(string: "https://www.sonnazgroup.com/terms")
     private let supportEmail = "support@sonnazgroup.com"
-    private let discountCalculatorURL = URL(string: "https://sonnazgroup.com/discount-calculator")
-    private let quickerTipperURL = URL(string: "https://sonnazgroup.com/quicker-tipper")
+
+    private var appVersionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "Version \(version) (\(build))"
+    }
 
     // MARK: - Body
 
@@ -83,7 +53,22 @@ struct InfoView: View {
         NavigationStack {
             ZStack {
                 CalculatorBackground(accentColor: accentColor, colorScheme: colorScheme)
-                contentLayer
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+                        heroCard
+                        howItWorksCard
+                        privacyCard
+                        linksCard
+
+                        Text("© 2026 Sonnaz Group, LLC. All rights reserved.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .padding(.bottom, 24)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                }
             }
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
@@ -97,7 +82,6 @@ struct InfoView: View {
             } message: {
                 Text("You are opening an external link outside the app:\n\n\(pendingExternalURL?.absoluteString ?? "")")
             }
-            .tint(.primary)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -112,209 +96,142 @@ struct InfoView: View {
         .tint(accentColor)
     }
 
-    private var contentLayer: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
-                appCard
-                linksSection
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 25)
-        }
-    }
+    // MARK: - Hero
 
-    // MARK: - App card
-
-    private var appCard: some View {
-        VStack(spacing: 20) {
-            // App icon showcase
+    private var heroCard: some View {
+        VStack(spacing: 14) {
             Image(currentAppIconPreviewName)
                 .resizable()
                 .scaledToFit()
-                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
-                .padding(20)
-                .frame(width: 180, height: 180)
-                .glassCard(accentColor: accentColor, cornerRadius: 32, emphasized: true)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .padding(14)
+                .frame(width: 128, height: 128)
+                .glassCard(accentColor: accentColor, cornerRadius: 28, emphasized: true)
 
-            // App title
-            VStack(spacing: 0) {
-                Text("Discount")
-                Text("Calculator")
-            }
-            .font(.system(size: 30, weight: .heavy, design: .default))
-            .foregroundColor(colorScheme == .dark ? .white : .primary)
+            Text("Discount Calculator")
+                .font(.system(.title2, design: .rounded).weight(.heavy))
 
-            // Accent divider
-            Rectangle()
-                .fill(
-                    LinearGradient(
-                        colors: [accentColor.opacity(0.8), accentColor.opacity(0.3)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(height: 2)
-                .padding(.horizontal, 40)
+            Text(appVersionString)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .glassCard(accentColor: accentColor, cornerRadius: 12)
 
-            // Version & about info
-            VStack(spacing: 16) {
-                HStack {
-                    Text("Version")
-                    Spacer()
-                    Text("\(Bundle.main.releaseVersionNumber ?? "1.0.0")")
-                        .foregroundColor(.secondary)
-                }
-                .font(.subheadline)
-
-                HStack {
-                    Text("Build Number")
-                    Spacer()
-                    Text("\(Bundle.main.buildVersionNumber ?? "1")")
-                        .foregroundColor(.secondary)
-                }
-                .font(.subheadline)
-
-                HStack(alignment: .top, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Developer")
-                            .font(.subheadline)
-                        Spacer(minLength: 0)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing, spacing: 2) {
-                        Text("Sonnaz Group, LLC")
-                            .foregroundColor(.secondary)
-                            .font(.subheadline)
-                        Text("© 2026. All Rights Reserved")
-                            .foregroundColor(.secondary)
-                            .font(.footnote)
-                    }
-                }
-
-                // Company + apps — tappable logos
-                ViewThatFits(in: .horizontal) {
-                    companyAppsLogoGrid(columnCount: 3, spacing: 14, minimumTileWidth: 60)
-                    companyAppsLogoGrid(
-                        columnCount: 2,
-                        spacing: 14,
-                        minimumTileWidth: 84,
-                        maximumTileWidth: 88,
-                        gridMaxWidth: 190,
-                        alignment: .center
-                    )
-                }
-                .padding(.top, 8)
-                .confirmationDialog("Open Discount Calculator", isPresented: $showDiscountDestinationOptions, titleVisibility: .visible) {
-                    Button("Website") {
-                        if let url = discountCalculatorURL {
-                            openLinkWithWarning(url, title: "Discount Calculator Website")
-                        }
-                    }
-                    Button("Web App") {
-                        if let url = webAppURL {
-                            openLinkWithWarning(url, title: "Discount Calculator Web App")
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Where would you like to go?")
-                }
-                .tint(.primary)
-            }
+            Text("by Sonnaz Group, LLC")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
-        .padding(24)
-        .frame(maxWidth: 380)
-        .glassCard(accentColor: accentColor, cornerRadius: 30, emphasized: true)
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.5 : 0.18), radius: 26, x: 0, y: 18)
+        .padding(22)
+        .frame(maxWidth: .infinity)
+        .glassCard(accentColor: accentColor, cornerRadius: 28, emphasized: true)
     }
 
-    // MARK: - Links section
+    // MARK: - How it works
 
-    private var linksSection: some View {
-        VStack(spacing: 10) {
-            infoLinkButton(title: "Website", url: websiteURL)
-            infoLinkButton(title: "Web App", url: webAppURL)
-            infoLinkButton(title: "Privacy Statement", url: privacyURL)
-            infoLinkButton(title: "Terms & Conditions", url: termsURL)
-            Button {
+    private var howItWorksCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("How it works")
+                .font(.headline)
+
+            stepRow(icon: "cart.fill",
+                    text: "Type the price of the item.")
+            stepRow(icon: "tag.fill",
+                    text: "Add up to four discounts — percent or dollars off. They stack in the order you add them.")
+            stepRow(icon: "location.fill",
+                    text: "Tap Local to use your state's sales tax, pick a state from the list, or type any rate.")
+            stepRow(icon: "checkmark.seal.fill",
+                    text: "The big number is what you'll pay at the register. Tap Copy to share it.")
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(accentColor: accentColor, cornerRadius: 24)
+    }
+
+    private func stepRow(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(accentColor)
+                .frame(width: 28, height: 28)
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Privacy note
+
+    private var privacyCard: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "hand.raised.fill")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(accentColor)
+                .frame(width: 28, height: 28)
+            Text("Your location never leaves this device — it's only used to look up your state's tax rate. Rates are approximate; edit them to match your receipt.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(accentColor: accentColor, cornerRadius: 24)
+    }
+
+    // MARK: - Links
+
+    private var linksCard: some View {
+        VStack(spacing: 0) {
+            linkRow(title: "Website", icon: "globe") {
+                if let url = websiteURL { openLinkWithWarning(url) }
+            }
+            linkDivider
+            linkRow(title: "Web App", icon: "safari.fill") {
+                if let url = webAppURL { openLinkWithWarning(url) }
+            }
+            linkDivider
+            linkRow(title: "Privacy Statement", icon: "lock.fill") {
+                if let url = privacyURL { openLinkWithWarning(url) }
+            }
+            linkDivider
+            linkRow(title: "Terms & Conditions", icon: "doc.text.fill") {
+                if let url = termsURL { openLinkWithWarning(url) }
+            }
+            linkDivider
+            linkRow(title: "Email Support", icon: "envelope.fill") {
                 openEmailSupport()
-            } label: {
-                Text("Email Support")
-                    .font(.subheadline)
-                    .foregroundColor(accentColor)
-                    .underline()
-                    .frame(maxWidth: .infinity)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.bottom, 40)
+        .glassCard(accentColor: accentColor, cornerRadius: 24)
     }
 
-    // MARK: - Logo grid
-
-    private func companyAppsLogoGrid(
-        columnCount: Int,
-        spacing: CGFloat,
-        minimumTileWidth: CGFloat,
-        maximumTileWidth: CGFloat? = nil,
-        gridMaxWidth: CGFloat? = nil,
-        alignment: Alignment = .leading
-    ) -> some View {
-        let columns = Array(repeating: GridItem(.flexible(minimum: minimumTileWidth), spacing: spacing), count: columnCount)
-
-        return LazyVGrid(columns: columns, spacing: spacing) {
-            logoTile(imageName: sonnazGroupLogoAssetName, maximumTileWidth: maximumTileWidth) {
-                if let url = websiteURL {
-                    openLinkWithWarning(url, title: "Sonnaz Group Website")
-                }
-            }
-            logoTile(imageName: discountCalculatorLogoAssetName, maximumTileWidth: maximumTileWidth) {
-                showDiscountDestinationOptions = true
-            }
-            logoTile(imageName: quickerTipperLogoAssetName, maximumTileWidth: maximumTileWidth) {
-                if let url = quickerTipperURL {
-                    openLinkWithWarning(url, title: "Quicker Tipper")
-                }
-            }
-        }
-        .frame(maxWidth: gridMaxWidth ?? .infinity, alignment: alignment)
-        .frame(maxWidth: .infinity, alignment: alignment)
+    private var linkDivider: some View {
+        Divider()
+            .overlay(accentColor.opacity(0.15))
+            .padding(.leading, 56)
     }
 
-    private func logoTile(
-        imageName: String,
-        maximumTileWidth: CGFloat? = nil,
-        action: @escaping () -> Void
-    ) -> some View {
+    private func linkRow(title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(imageName)
-                .resizable()
-                .scaledToFit()
-                .padding(10)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
-                .glassCard(accentColor: accentColor, cornerRadius: 18)
-        }
-        .frame(maxWidth: maximumTileWidth)
-        .buttonStyle(.plain)
-    }
-
-    private func infoLinkButton(title: String, url: URL?) -> some View {
-        Button {
-            if let url {
-                openLinkWithWarning(url, title: title)
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(accentColor)
+                    .frame(width: 28)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "arrow.up.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
             }
-        } label: {
-            Text(title)
-                .font(.subheadline)
-                .foregroundColor(accentColor)
-                .underline()
-                .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .contentShape(Rectangle())
         }
-        .disabled(url == nil)
-        .opacity(url == nil ? 0.4 : 1.0)
+        .buttonStyle(.plain)
     }
 
     // MARK: - External links
@@ -322,11 +239,11 @@ struct InfoView: View {
     private func openEmailSupport() {
         let encoded = supportEmail.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? supportEmail
         if let url = URL(string: "mailto:\(encoded)") {
-            openLinkWithWarning(url, title: "Email Support")
+            openLinkWithWarning(url)
         }
     }
 
-    private func openLinkWithWarning(_ url: URL, title: String? = nil) {
+    private func openLinkWithWarning(_ url: URL) {
         if suppressExternalLinkWarning {
             UIApplication.shared.open(url, options: [:], completionHandler: nil)
             return
@@ -344,16 +261,6 @@ struct InfoView: View {
     private func clearPendingExternalLink() {
         pendingExternalURL = nil
         showExternalLinkWarningAlert = false
-    }
-}
-
-private extension Bundle {
-    var releaseVersionNumber: String? {
-        infoDictionary?["CFBundleShortVersionString"] as? String
-    }
-
-    var buildVersionNumber: String? {
-        infoDictionary?["CFBundleVersion"] as? String
     }
 }
 

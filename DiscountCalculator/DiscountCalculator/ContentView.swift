@@ -11,8 +11,6 @@ struct ContentView: View {
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
-    @AppStorage("homeStateCode") private var homeStateCode: String = ""
-    @AppStorage("localTaxRate") private var localTaxRate: Double = 0
     @Environment(\.colorScheme) private var systemColorScheme
 
     init(showLoadingInitially: Bool = true) {
@@ -64,13 +62,6 @@ struct ContentView: View {
         .environment(store)
         .task {
             maybeAutoDetectState()
-            TaxWidgetSharedStore.update(homeStateCode: homeStateCode, localTaxRate: localTaxRate)
-        }
-        .onChange(of: homeStateCode) { _, _ in
-            TaxWidgetSharedStore.update(homeStateCode: homeStateCode, localTaxRate: localTaxRate)
-        }
-        .onChange(of: localTaxRate) { _, _ in
-            TaxWidgetSharedStore.update(homeStateCode: homeStateCode, localTaxRate: localTaxRate)
         }
     }
 
@@ -78,8 +69,7 @@ struct ContentView: View {
         guard autoDetectStateFromLocation else { return }
         LocationManager.shared.requestStateFromLocation { code in
             if let code, USStateTax.byCode(code) != nil {
-                homeStateCode = code
-                store.selectState(code)
+                store.applyState(code)
             }
         }
     }

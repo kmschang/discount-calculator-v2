@@ -16,7 +16,8 @@ struct DeveloperToolsView: View {
     @ObservedObject private var location = LocationManager.shared
 
     @AppStorage("devModeEnabled") private var devModeEnabled: Bool = false
-    @AppStorage("homeStateCode") private var homeStateCode: String = ""
+    @AppStorage("taxStateCode") private var taxStateCode: String = ""
+    @AppStorage("savedTaxRate") private var savedTaxRate: Double = -1
 
     private let timeFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -92,7 +93,8 @@ struct DeveloperToolsView: View {
                           ok: location.authorizationStatus == .authorizedWhenInUse || location.authorizationStatus == .authorizedAlways)
                 statusRow("Resolving", location.isResolving ? "Yes" : "No", ok: nil)
                 detailRow("Resolved State", location.lastResolvedStateName ?? location.lastResolvedStateCode ?? "—")
-                detailRow("Home State Code", homeStateCode.isEmpty ? "—" : homeStateCode)
+                detailRow("Tax State Code", taxStateCode.isEmpty ? "—" : taxStateCode)
+                detailRow("Saved Tax Rate", savedTaxRate < 0 ? "unset" : "\(AppFormat.percent(savedTaxRate))%")
                 if let fix = location.lastFix {
                     detailRow("Last Fix", String(format: "%.3f, %.3f", fix.coordinate.latitude, fix.coordinate.longitude))
                 }

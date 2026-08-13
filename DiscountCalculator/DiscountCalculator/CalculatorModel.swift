@@ -8,16 +8,16 @@ enum DiscountKind: String, Codable, Hashable {
     case amount
 }
 
-struct Discount: Identifiable, Hashable {
+/// One editable discount row on the main screen (up to 4). The row's text field
+/// binds straight to `valueText`; `value` is whatever the text parses to.
+struct DiscountEntry: Identifiable, Hashable {
     let id = UUID()
-    var kind: DiscountKind
-    var value: Double   // percent (e.g. 20 = 20%) or dollars off (e.g. 5 = $5)
+    var kind: DiscountKind = .percent
+    var valueText: String = ""
 
-    var shortLabel: String {
-        switch kind {
-        case .percent: return "\(AppFormat.percent(value))% off"
-        case .amount:  return "\(value.formatted(.currency(code: AppFormat.currencyCode))) off"
-        }
+    var value: Double? {
+        guard let v = AppFormat.parse(valueText), v > 0 else { return nil }
+        return v
     }
 }
 
@@ -39,107 +39,107 @@ struct CalculationResult: Equatable {
 
 // MARK: - Store
 // Holds the transient state of the calculator. Persisted settings (round-to-cents,
-// local tax, etc.) live in @AppStorage and are passed into `result(...)`, so the
+// tax-on-original) live in @AppStorage and are passed into `result(...)`, so the
 // computation stays a pure function of (state + settings).
 
 @Observable
 final class CalculatorStore {
-    /// Digits typed on the keypad, interpreted as cents (e.g. "1299" -> $12.99).
-    var rawDigits: String = ""
-    var discounts: [Discount] = []
-    /// nil means "no sales tax". Otherwise a US state/DC code, e.g. "CA".
-    var selectedStateCode: String? = nil
+    static let maxDiscounts = 4
 
-    private let maxDigits = 9
+    /// Everything the user types binds directly to these strings.
+    var priceText: String = ""
+    var discounts: [DiscountEntry] = []
+    var taxRateText: String = ""
+    /// The state that produced the current tax rate. nil = custom rate (or none).
+    var taxStateCode: String? = nil
 
     init() {
         // Seed sample data only when launched with -DemoData (for screenshots / UI tests).
         if ProcessInfo.processInfo.arguments.contains("-DemoData") {
-            rawDigits = "4999"
+            priceText = "49.99"
             discounts = [
-                Discount(kind: .percent, value: 25),
-                Discount(kind: .percent, value: 10),
+                DiscountEntry(kind: .percent, valueText: "25"),
+                DiscountEntry(kind: .percent, valueText: "10"),
             ]
-            selectedStateCode = "CA"
+            applyState("CA")
         }
     }
 
-    // MARK: Input
+    // MARK: Price
 
-    var itemAmount: Double {
-        guard !rawDigits.isEmpty, let cents = Double(rawDigits) else { return 0 }
-        return cents / 100
-    }
+    var itemAmount: Double { max(0, AppFormat.parse(priceText) ?? 0) }
 
-    var hasInput: Bool { !rawDigits.isEmpty || !discounts.isEmpty }
-
-    func addDigit(_ digit: String) {
-        if rawDigits.isEmpty && digit == "0" { return }   // no leading zeros
-        guard rawDigits.count < maxDigits else { return }
-        rawDigits.append(digit)
-    }
-
-    func backspace() {
-        guard !rawDigits.isEmpty else { return }
-        rawDigits.removeLast()
-    }
-
-    func clearAmount() {
-        rawDigits = ""
-    }
-
-    func startOver() {
-        rawDigits = ""
-        discounts = []
-    }
+    var hasInput: Bool { !priceText.isEmpty || !discounts.isEmpty }
 
     // MARK: Discounts
 
-    func addDiscount(_ discount: Discount) {
-        discounts.append(discount)
+    var canAddDiscount: Bool { discounts.count < Self.maxDiscounts }
+
+    /// Adds an empty row and returns its id so the view can focus its field.
+    @discardableResult
+    func addDiscountRow(kind: DiscountKind = .percent) -> UUID? {
+        guard canAddDiscount else { return nil }
+        let entry = DiscountEntry(kind: kind)
+        discounts.append(entry)
+        return entry.id
     }
 
-    func removeDiscount(_ discount: Discount) {
-        discounts.removeAll { $0.id == discount.id }
+    func removeDiscount(_ entry: DiscountEntry) {
+        discounts.removeAll { $0.id == entry.id }
+    }
+
+    func startOver() {
+        priceText = ""
+        discounts = []
     }
 
     // MARK: Tax
 
-    func selectState(_ code: String?) {
-        selectedStateCode = code
+    var taxRatePercent: Double { max(0, AppFormat.parse(taxRateText) ?? 0) }
+
+    var taxState: USStateTax? {
+        taxStateCode.flatMap(USStateTax.byCode)
     }
 
-    var selectedState: USStateTax? {
-        guard let code = selectedStateCode else { return nil }
-        return USStateTax.byCode(code)
+    /// Sets the tax rate from a state's base rate (location fix or manual pick).
+    /// Passing nil clears the tax entirely.
+    func applyState(_ code: String?) {
+        guard let code, let state = USStateTax.byCode(code) else {
+            taxStateCode = nil
+            taxRateText = ""
+            return
+        }
+        taxStateCode = state.code
+        taxRateText = AppFormat.percent(state.rate)
     }
 
-    /// The combined tax rate applied: state base rate + optional local add-on.
-    /// Returns 0 when no state is selected.
-    func appliedTaxRate(localTaxRate: Double) -> Double {
-        guard let state = selectedState else { return 0 }
-        return state.rate + max(0, localTaxRate)
+    /// Call after the user edits the tax field: once the rate no longer matches
+    /// the chosen state's base rate, it becomes a custom rate.
+    func reconcileTaxSource() {
+        guard let state = taxState else { return }
+        if taxRatePercent != state.rate { taxStateCode = nil }
     }
 
     // MARK: Calculation
 
-    func result(roundToCents: Bool, localTaxRate: Double, taxOnOriginal: Bool) -> CalculationResult {
+    func result(roundToCents: Bool, taxOnOriginal: Bool) -> CalculationResult {
         let original = itemAmount
 
         // Apply discounts in the order they were added.
         // Percent discounts compound (multiplicative); dollar discounts subtract.
         var running = original
-        for discount in discounts {
-            switch discount.kind {
+        for entry in discounts {
+            guard let value = entry.value else { continue }
+            switch entry.kind {
             case .percent:
-                running *= max(0, 1 - discount.value / 100)
+                running *= max(0, 1 - value / 100)
             case .amount:
-                running = max(0, running - discount.value)
+                running = max(0, running - value)
             }
         }
 
         var subtotal = running
-        let rate = appliedTaxRate(localTaxRate: localTaxRate)
+        let rate = taxRatePercent
         let taxBase = taxOnOriginal ? original : subtotal
         var taxAmount = taxBase * rate / 100
 

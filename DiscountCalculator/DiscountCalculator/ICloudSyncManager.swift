@@ -23,8 +23,8 @@ final class ICloudSyncManager: ObservableObject {
     /// UserDefaults (@AppStorage) keys mirrored into iCloud. Device-local
     /// preferences (appearanceMode, themeColor, selectedAppIconName) are omitted.
     static let syncedSettingKeys: [String] = [
-        "homeStateCode",
-        "localTaxRate",
+        "taxStateCode",
+        "savedTaxRate",
         "roundToCents",
         "taxOnOriginal",
         "autoDetectStateFromLocation"

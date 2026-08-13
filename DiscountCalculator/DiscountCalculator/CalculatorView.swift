@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// The single main screen: a receipt-style hero (price in, total out, breakdown),
-/// a compact Discounts + Sales Tax tile row, and a big keypad that fills the
-/// space the old tab bar used to take.
+/// The single main screen, redesigned around typed input instead of a keypad:
+/// a pinned "You Pay" hero card, then Price / Discounts / Sales Tax cards whose
+/// number fields use the system decimal keyboard. Everything lives on one page.
 struct CalculatorView: View {
     @Environment(CalculatorStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
@@ -11,106 +11,84 @@ struct CalculatorView: View {
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("roundToCents") private var roundToCents: Bool = true
-    @AppStorage("localTaxRate") private var localTaxRate: Double = 0
     @AppStorage("taxOnOriginal") private var taxOnOriginal: Bool = false
-    @AppStorage("homeStateCode") private var homeStateCode: String = ""
 
-    @State private var isAddDiscountPresented = false
-    @State private var isTaxSheetPresented = false
-    @State private var didApplyHomeState = false
+    // Persisted tax choice (survives launches; synced via iCloud KVS).
+    @AppStorage("savedTaxRate") private var savedTaxRate: Double = -1
+    @AppStorage("taxStateCode") private var savedTaxStateCode: String = ""
+    // Pre-redesign key, read once to migrate an existing user's state choice.
+    @AppStorage("homeStateCode") private var legacyHomeStateCode: String = ""
+
+    @ObservedObject private var location = LocationManager.shared
+
+    @FocusState private var focusedField: Field?
+    @State private var isStatePickerPresented = false
+    @State private var didRestoreTax = false
     @State private var justCopied = false
+
+    private enum Field: Hashable {
+        case price
+        case discount(UUID)
+        case tax
+    }
 
     private var accentColor: Color {
         AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: colorScheme)
     }
 
     private var result: CalculationResult {
-        store.result(roundToCents: roundToCents, localTaxRate: localTaxRate, taxOnOriginal: taxOnOriginal)
+        store.result(roundToCents: roundToCents, taxOnOriginal: taxOnOriginal)
     }
 
     private var currencyCode: String { AppFormat.currencyCode }
 
-    private let keyRows: [[CalcKey]] = [
-        [.digit("1"), .digit("2"), .digit("3")],
-        [.digit("4"), .digit("5"), .digit("6")],
-        [.digit("7"), .digit("8"), .digit("9")],
-        [.clear, .digit("0"), .backspace],
-    ]
-
     var body: some View {
+        @Bindable var store = store
+
         ZStack {
             CalculatorBackground(accentColor: accentColor, colorScheme: colorScheme)
 
-            VStack(spacing: 12) {
-                // Top section is fixed-height (see heroPanel / quickTiles), so nothing
-                // the user types can change its size…
-                heroPanel
+            VStack(spacing: 14) {
+                // The answer stays pinned on top; the input cards scroll under it
+                // when the keyboard is up.
+                heroCard
 
-                quickTiles
-
-                if !store.discounts.isEmpty {
-                    discountStrip
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        priceCard($store)
+                        discountsCard($store)
+                        taxCard($store)
+                    }
+                    .padding(.bottom, 12)
                 }
-
-                // …and the keypad simply fills whatever space is left, as big as
-                // possible, and never moves because the section above is constant.
-                keypad
+                .scrollDismissesKeyboard(.interactively)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 16)
             .padding(.top, 8)
-            .padding(.bottom, 6)
             .animation(.snappy, value: store.discounts)
         }
-        .onAppear {
-            if !didApplyHomeState {
-                didApplyHomeState = true
-                if store.selectedStateCode == nil, !homeStateCode.isEmpty {
-                    store.selectState(homeStateCode)
-                }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }
+                    .font(.headline)
             }
         }
-        .sheet(isPresented: $isAddDiscountPresented) {
-            AddDiscountView { discount in
-                store.addDiscount(discount)
-            }
-            .presentationDragIndicator(.visible)
+        .onAppear(perform: restoreSavedTax)
+        .onChange(of: store.taxRateText) {
+            store.reconcileTaxSource()
+            persistTax()
         }
-        .sheet(isPresented: $isTaxSheetPresented) {
-            TaxPickerSheet()
-                .presentationDragIndicator(.visible)
+        .onChange(of: store.taxStateCode) { persistTax() }
+        .sheet(isPresented: $isStatePickerPresented) {
+            statePickerSheet
         }
     }
 
-    // MARK: - Hero (price in → total out → breakdown)
+    // MARK: - Hero (the big answer + breakdown)
 
-    private var heroPanel: some View {
-        VStack(spacing: 12) {
-            // Price entry line — this is what the keypad types into.
-            HStack(alignment: .firstTextBaseline) {
-                Text("Price")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(store.itemAmount, format: .currency(code: currencyCode))
-                    .font(.system(size: 30, weight: .bold, design: .rounded))
-                    .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.5)
-                    .contentTransition(.numericText())
-                    .animation(.snappy, value: store.itemAmount)
-                    .overlay(alignment: .bottom) {
-                        Capsule()
-                            .fill(accentColor.opacity(0.85))
-                            .frame(height: 3)
-                            .offset(y: 5)
-                    }
-            }
-
-            Divider()
-                .overlay(accentColor.opacity(0.25))
-
-            // The big answer.
+    private var heroCard: some View {
+        VStack(spacing: 10) {
             HStack {
                 Text("You Pay")
                     .font(.headline)
@@ -127,22 +105,33 @@ struct CalculatorView: View {
                 .buttonStyle(.plain)
                 .disabled(result.total <= 0)
                 .opacity(result.total <= 0 ? 0.4 : 1)
+
+                Button {
+                    withAnimation(.snappy) { store.startOver() }
+                    focusedField = nil
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(accentColor)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 6)
+                .disabled(!store.hasInput)
+                .opacity(store.hasInput ? 1 : 0.4)
+                .accessibilityLabel("Start over")
             }
 
-            // Fixed-height box: when a long total scales down, the freed space
-            // becomes a gap above the number (bottom alignment) rather than making
-            // the whole tile shorter — so the keypad below never shifts.
+            // Fixed-height box so a long total scales down instead of moving
+            // the cards below.
             Text(result.total, format: .currency(code: currencyCode))
-                .font(.system(size: 62, weight: .bold, design: .rounded))
+                .font(.system(size: 58, weight: .bold, design: .rounded))
                 .foregroundStyle(accentColor)
                 .minimumScaleFactor(0.4)
                 .lineLimit(1)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: result.total)
-                .frame(maxWidth: .infinity, minHeight: 74, maxHeight: 74, alignment: .bottom)
+                .frame(maxWidth: .infinity, minHeight: 66, maxHeight: 66)
 
-            // Always show the breakdown (zeros before any input) so the layout
-            // stays put and never surprises the user with a new row.
             breakdownRow
         }
         .padding(18)
@@ -162,7 +151,7 @@ struct CalculatorView: View {
                           value: result.savings,
                           tint: result.savings > 0 ? .green : .secondary)
             breakdownDivider
-            breakdownItem(label: "Tax",
+            breakdownItem(label: taxBreakdownLabel,
                           value: result.taxAmount,
                           tint: result.taxAmount > 0 ? .primary : .secondary)
         }
@@ -170,6 +159,10 @@ struct CalculatorView: View {
 
     private var savingsLabel: String {
         result.savings > 0 ? "You Save (\(AppFormat.percent(result.effectiveDiscountPercent))%)" : "You Save"
+    }
+
+    private var taxBreakdownLabel: String {
+        result.taxRatePercent > 0 ? "Tax (\(AppFormat.percent(result.taxRatePercent))%)" : "Tax"
     }
 
     private var breakdownDivider: some View {
@@ -197,151 +190,278 @@ struct CalculatorView: View {
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Quick tiles (Discounts + Sales Tax, side by side)
+    // MARK: - Price card
 
-    private var quickTiles: some View {
+    private func priceCard(_ store: Bindable<CalculatorStore>) -> some View {
         HStack(spacing: 12) {
-            quickTile(icon: "tag.fill",
-                      title: "Discounts",
-                      subtitle: discountsSubtitle,
-                      badge: store.discounts.isEmpty ? nil : "\(store.discounts.count)") {
-                isAddDiscountPresented = true
-            }
-
-            quickTile(icon: "building.columns.fill",
-                      title: "Sales Tax",
-                      subtitle: taxSubtitle,
-                      badge: store.selectedState != nil ? "\(AppFormat.percent(result.taxRatePercent))%" : nil) {
-                isTaxSheetPresented = true
-            }
+            cardIcon("cart.fill")
+            Text("Price")
+                .font(.headline)
+            Spacer()
+            Text(AppFormat.currencySymbol)
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .foregroundStyle(.secondary)
+            TextField("0", text: store.priceText)
+                .keyboardType(.decimalPad)
+                .focused($focusedField, equals: .price)
+                .font(.system(.title2, design: .rounded).weight(.bold))
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 150)
         }
-    }
-
-    private func quickTile(icon: String, title: String, subtitle: String, badge: String?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: icon)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(accentColor)
-                    Spacer()
-                    if let badge {
-                        Text(badge)
-                            .font(.subheadline.weight(.bold))
-                            .foregroundStyle(accentColor)
-                            .monospacedDigit()
-                    }
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-                Text(title)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        .padding(16)
+        .contentShape(Rectangle())
+        .onTapGesture { focusedField = .price }
         .glassCard(accentColor: accentColor, cornerRadius: 20)
     }
 
-    private var discountsSubtitle: String {
-        if store.discounts.isEmpty { return "Tap to add one" }
-        return store.discounts.count == 1 ? "1 discount applied" : "\(store.discounts.count) discounts stack"
-    }
+    // MARK: - Discounts card
 
-    private var taxSubtitle: String {
-        guard let state = store.selectedState else { return "None — tap to choose" }
-        if localTaxRate > 0 { return "\(state.name) + local" }
-        return state.name
-    }
-
-    // MARK: - Discount chip strip
-
-    private var discountStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(store.discounts) { discount in
-                    discountChip(discount)
+    private func discountsCard(_ store: Bindable<CalculatorStore>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                cardIcon("tag.fill")
+                Text("Discounts")
+                    .font(.headline)
+                Spacer()
+                if result.savings > 0 {
+                    Text("−\(AppFormat.percent(result.effectiveDiscountPercent))%")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.green)
+                        .monospacedDigit()
                 }
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 2)
-        }
-    }
 
-    private func discountChip(_ discount: Discount) -> some View {
-        HStack(spacing: 6) {
-            Text(discount.shortLabel)
-                .font(.subheadline.weight(.bold))
-                .foregroundStyle(.primary)
-            Button {
-                store.removeDiscount(discount)
-            } label: {
-                Image(systemName: "xmark.circle.fill")
+            if self.store.discounts.isEmpty {
+                Text("Add up to 4 — percent or dollars off.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+
+            ForEach(store.discounts) { $entry in
+                discountRow($entry)
+            }
+
+            if self.store.canAddDiscount {
+                Button {
+                    withAnimation(.snappy) {
+                        if let id = self.store.addDiscountRow() {
+                            focusedField = .discount(id)
+                        }
+                    }
+                } label: {
+                    Label("Add Discount", systemImage: "plus.circle.fill")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(accentColor)
+                        .padding(.vertical, 4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+
+            if self.store.discounts.filter({ $0.kind == .percent }).count >= 2 {
+                Text("Stacked percents multiply: 20% then 10% takes 28% off, not 30%.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .glassCard(accentColor: accentColor, cornerRadius: 14, emphasized: true)
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(accentColor: accentColor, cornerRadius: 20)
     }
 
-    // MARK: - Keypad
+    private func discountRow(_ entry: Binding<DiscountEntry>) -> some View {
+        HStack(spacing: 10) {
+            Picker("Discount type", selection: entry.kind) {
+                Text("%").tag(DiscountKind.percent)
+                Text(AppFormat.currencySymbol).tag(DiscountKind.amount)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 92)
 
-    private var keypad: some View {
-        VStack(spacing: 10) {
-            ForEach(keyRows.indices, id: \.self) { rowIndex in
-                HStack(spacing: 10) {
-                    ForEach(keyRows[rowIndex], id: \.self) { key in
-                        keyButton(key)
+            if entry.wrappedValue.kind == .amount {
+                Text(AppFormat.currencySymbol)
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+
+            TextField(entry.wrappedValue.kind == .percent ? "20" : "5.00", text: entry.valueText)
+                .keyboardType(.decimalPad)
+                .focused($focusedField, equals: .discount(entry.wrappedValue.id))
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .frame(width: 84)
+
+            if entry.wrappedValue.kind == .percent {
+                Text("%")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                withAnimation(.snappy) { store.removeDiscount(entry.wrappedValue) }
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove discount")
+        }
+    }
+
+    // MARK: - Tax card
+
+    private func taxCard(_ store: Bindable<CalculatorStore>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                cardIcon("building.columns.fill")
+                Text("Sales Tax")
+                    .font(.headline)
+                Spacer()
+                Button {
+                    isStatePickerPresented = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(taxSourceLabel)
+                            .font(.subheadline.weight(.bold))
+                            .lineLimit(1)
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption2.weight(.bold))
                     }
+                    .foregroundStyle(accentColor)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Pick a state")
+            }
+
+            HStack(spacing: 10) {
+                TextField("0", text: store.taxRateText)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .tax)
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                    .frame(width: 84)
+                Text("%")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Button {
+                    detectLocation()
+                } label: {
+                    HStack(spacing: 6) {
+                        if location.isResolving {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "location.fill")
+                        }
+                        Text("Local")
+                    }
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(accentColor)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .glassCard(accentColor: accentColor, cornerRadius: 16, emphasized: true)
+                .disabled(location.isResolving)
+                .accessibilityLabel("Use my location for sales tax")
+            }
+
+            Text(taxStatusLine)
+                .font(.caption)
+                .foregroundStyle(location.lastError == nil ? Color.secondary : Color.red)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassCard(accentColor: accentColor, cornerRadius: 20)
+    }
+
+    private var taxSourceLabel: String {
+        if let state = store.taxState { return state.name }
+        return store.taxRatePercent > 0 ? "Custom" : "Pick a state"
+    }
+
+    private var taxStatusLine: String {
+        if location.isResolving { return "Finding your state…" }
+        if let error = location.lastError { return error }
+        if let state = store.taxState {
+            if state.hasNoStateSalesTax { return "\(state.name) has no state sales tax." }
+            return "\(state.name) state rate. Cities can add a bit — edit it to match your receipt."
+        }
+        if store.taxRatePercent > 0 { return "Custom rate. Tap Local to switch back to your state's rate." }
+        return "Type a rate, pick a state, or tap Local to use your location."
+    }
+
+    private func detectLocation() {
+        focusedField = nil
+        location.requestStateFromLocation { code in
+            if let code, USStateTax.byCode(code) != nil {
+                withAnimation(.snappy) { store.applyState(code) }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+        }
+    }
+
+    // MARK: - State picker sheet
+
+    private var statePickerSheet: some View {
+        NavigationStack {
+            ZStack {
+                CalculatorBackground(accentColor: accentColor, colorScheme: colorScheme)
+                StatePickerView(selectedCode: store.taxStateCode, showNoTaxOption: true) { code in
+                    withAnimation(.snappy) { store.applyState(code) }
+                    isStatePickerPresented = false
+                }
+            }
+            .navigationTitle("Sales Tax")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") { isStatePickerPresented = false }
+                        .tint(.primary)
                 }
             }
         }
-        // Fill all leftover vertical space so the keys are as large as they can be.
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .presentationDragIndicator(.visible)
     }
 
-    private func keyButton(_ key: CalcKey) -> some View {
-        Button {
-            handle(key)
-        } label: {
-            key.labelView
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(keyForeground(key))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .frame(minHeight: 48)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .glassCard(accentColor: accentColor, cornerRadius: 18,
-                   emphasized: key == .clear || key == .backspace)
+    // MARK: - Shared bits
+
+    private func cardIcon(_ systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(accentColor)
+            .frame(width: 24)
     }
 
-    private func handle(_ key: CalcKey) {
-        switch key {
-        case .digit(let d): store.addDigit(d)
-        case .clear: store.clearAmount()
-        case .backspace: store.backspace()
+    // MARK: - Tax persistence
+
+    /// Restores the last-used tax on first appearance (or migrates the old
+    /// home-state setting). Skipped if demo data / auto-detect already set one.
+    private func restoreSavedTax() {
+        guard !didRestoreTax else { return }
+        didRestoreTax = true
+        guard store.taxRateText.isEmpty, store.taxStateCode == nil else { return }
+
+        if savedTaxRate >= 0 {
+            store.taxStateCode = savedTaxStateCode.isEmpty ? nil : savedTaxStateCode
+            if savedTaxRate > 0 || !savedTaxStateCode.isEmpty {
+                store.taxRateText = AppFormat.percent(savedTaxRate)
+            }
+        } else if !legacyHomeStateCode.isEmpty {
+            store.applyState(legacyHomeStateCode)
         }
     }
 
-    private func keyForeground(_ key: CalcKey) -> Color {
-        switch key {
-        case .clear: return .red
-        case .backspace: return accentColor
-        case .digit: return .primary
-        }
+    private func persistTax() {
+        savedTaxRate = store.taxRatePercent
+        savedTaxStateCode = store.taxStateCode ?? ""
+        TaxWidgetSharedStore.update(stateCode: savedTaxStateCode, ratePercent: store.taxRatePercent)
     }
 
     // MARK: - Copy
@@ -352,117 +472,6 @@ struct CalculatorView: View {
         Task {
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             await MainActor.run { withAnimation(.snappy) { justCopied = false } }
-        }
-    }
-}
-
-// MARK: - Tax sheet (folds in the old Tax by State tab)
-// "Use my location" + the full state list, in one sheet.
-
-private struct TaxPickerSheet: View {
-    @Environment(CalculatorStore.self) private var store
-    @Environment(\.dismiss) private var dismiss
-    @Environment(\.colorScheme) private var systemScheme
-
-    @AppStorage("themeColor") private var themeColor: Int = 7
-    @AppStorage("appearanceMode") private var appearanceMode: Int = 0
-    @AppStorage("homeStateCode") private var homeStateCode: String = ""
-
-    @ObservedObject private var location = LocationManager.shared
-
-    private var accentColor: Color {
-        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemScheme)
-    }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                CalculatorBackground(accentColor: accentColor, colorScheme: systemScheme)
-
-                VStack(spacing: 10) {
-                    useMyLocationButton
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
-
-                    StatePickerView(selectedCode: store.selectedStateCode, showNoTaxOption: true) { code in
-                        store.selectState(code)
-                        homeStateCode = code ?? ""
-                        dismiss()
-                    }
-                }
-            }
-            .navigationTitle("Sales Tax")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
-                        .tint(.primary)
-                }
-            }
-        }
-    }
-
-    private var useMyLocationButton: some View {
-        Button {
-            detectLocation()
-        } label: {
-            HStack(spacing: 12) {
-                Image(systemName: "location.fill")
-                    .font(.title3)
-                    .foregroundStyle(accentColor)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Use my location")
-                        .font(.headline)
-                    Text(locationSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(location.lastError == nil ? Color.secondary : Color.red)
-                }
-                Spacer()
-                if location.isResolving {
-                    ProgressView()
-                } else {
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .padding(16)
-            .glassCard(accentColor: accentColor)
-        }
-        .buttonStyle(.plain)
-        .disabled(location.isResolving)
-    }
-
-    private var locationSubtitle: String {
-        if location.isResolving { return "Finding your state…" }
-        if let error = location.lastError { return error }
-        if let name = location.lastResolvedStateName { return "Found: \(name)" }
-        return "Find your state's tax automatically"
-    }
-
-    private func detectLocation() {
-        location.requestStateFromLocation { code in
-            if let code, USStateTax.byCode(code) != nil {
-                homeStateCode = code
-                store.selectState(code)
-            }
-        }
-    }
-}
-
-// MARK: - Keypad key
-
-private enum CalcKey: Hashable {
-    case digit(String)
-    case clear
-    case backspace
-
-    @ViewBuilder
-    var labelView: some View {
-        switch self {
-        case .digit(let d): Text(d)
-        case .clear: Image(systemName: "xmark")
-        case .backspace: Image(systemName: "delete.left")
         }
     }
 }

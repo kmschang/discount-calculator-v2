@@ -28,18 +28,25 @@ enum TaxWidgetSharedStore {
     static let appGroupID = "group.com.schang.Discount-Calculator"
     static let snapshotKey = "tax_widget_snapshot"
 
-    /// Builds and writes the snapshot from the current home state + local tax add-on.
-    static func update(homeStateCode: String, localTaxRate: Double) {
+    /// Builds and writes the snapshot from the tax applied on the main screen —
+    /// either a state's rate or a custom typed rate.
+    static func update(stateCode: String, ratePercent: Double) {
         guard let defaults = UserDefaults(suiteName: appGroupID) else { return }
 
         let snapshot: TaxWidgetSnapshot
-        if !homeStateCode.isEmpty, let state = USStateTax.byCode(homeStateCode) {
-            let total = state.hasNoStateSalesTax ? localTaxRate : state.rate + localTaxRate
+        if let state = USStateTax.byCode(stateCode) {
             snapshot = TaxWidgetSnapshot(
                 stateCode: state.code,
                 stateName: state.name,
-                totalRatePercent: total,
-                hasTax: total > 0
+                totalRatePercent: ratePercent,
+                hasTax: ratePercent > 0
+            )
+        } else if ratePercent > 0 {
+            snapshot = TaxWidgetSnapshot(
+                stateCode: "Tax",
+                stateName: "Custom rate",
+                totalRatePercent: ratePercent,
+                hasTax: true
             )
         } else {
             snapshot = TaxWidgetSnapshot(stateCode: "", stateName: "", totalRatePercent: 0, hasTax: false)

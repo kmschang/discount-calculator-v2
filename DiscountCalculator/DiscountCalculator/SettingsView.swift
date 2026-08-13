@@ -1,5 +1,8 @@
 import SwiftUI
 
+/// Settings sheet, redesigned: colored icon tiles, glassy rows over the app
+/// background, and only the options that still matter — the sales-tax choice
+/// itself now lives on the main screen.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var systemColorScheme
@@ -7,8 +10,6 @@ struct SettingsView: View {
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
-    @AppStorage("homeStateCode") private var homeStateCode: String = ""
-    @AppStorage("localTaxRate") private var localTaxRate: Double = 0
     @AppStorage("roundToCents") private var roundToCents: Bool = true
     @AppStorage("taxOnOriginal") private var taxOnOriginal: Bool = false
     @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
@@ -17,35 +18,11 @@ struct SettingsView: View {
     @State private var versionTapCount = 0
 
     private var accentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            let effectiveScheme: ColorScheme
-            if let appScheme = appColorScheme {
-                effectiveScheme = appScheme
-            } else {
-                effectiveScheme = systemColorScheme
-            }
-            return effectiveScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemColorScheme)
     }
 
     private var appColorScheme: ColorScheme? {
-        switch appearanceMode {
-        case 1:
-            return .light
-        case 2:
-            return .dark
-        default:
-            return nil
-        }
+        AppTheme.appColorScheme(appearanceMode: appearanceMode)
     }
 
     private var appearanceName: String {
@@ -90,15 +67,6 @@ struct SettingsView: View {
         }
     }
 
-    private var homeStateName: String {
-        guard !homeStateCode.isEmpty, let state = USStateTax.byCode(homeStateCode) else { return "Not set" }
-        return state.name
-    }
-
-    private var localTaxLabel: String {
-        localTaxRate > 0 ? "\(AppFormat.percent(localTaxRate))%" : "None"
-    }
-
     private var appVersionString: String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
@@ -115,139 +83,17 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    NavigationLink {
-                        HomeStateSettingsView()
-                    } label: {
-                        HStack {
-                            Text("Home State")
-                            Spacer()
-                            Text(homeStateName)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+            ZStack {
+                CalculatorBackground(accentColor: accentColor, colorScheme: systemColorScheme)
 
-                    NavigationLink {
-                        LocalTaxSettingsView()
-                    } label: {
-                        HStack {
-                            Text("Local Tax")
-                            Spacer()
-                            Text(localTaxLabel)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    Toggle("Round to the penny", isOn: $roundToCents)
-                    Toggle("Tax the original price", isOn: $taxOnOriginal)
-                    Toggle("Find my state automatically", isOn: $autoDetectStateFromLocation)
-                } header: {
-                    Text("Calculator")
-                } footer: {
-                    Text("“Tax the original price” charges sales tax on the price before discounts. Most stores tax the discounted price, so leave this off unless you need it. “Find my state automatically” uses your location on launch to set your state's tax.")
+                List {
+                    calculatorSection
+                    appearanceSection
+                    accountSection
+                    developerSection
+                    aboutSection
                 }
-
-                Section("Appearance") {
-                    NavigationLink {
-                        AppearanceModeSettingsView()
-                    } label: {
-                        HStack {
-                            Text("Appearance")
-                            Spacer()
-                            Text(appearanceName)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-
-                    NavigationLink {
-                        AccentColorSettingsView()
-                    } label: {
-                        HStack {
-                            Text("Accent Color")
-                            Spacer()
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .fill(accentColor)
-                                    .frame(width: 14, height: 14)
-                                Text(accentColorName)
-                                    .foregroundColor(accentColor)
-                            }
-                        }
-                    }
-
-                    NavigationLink {
-                        AppIconSettingsView(onDone: {
-                            dismiss()
-                        })
-                    } label: {
-                        HStack {
-                            Text("App Icon")
-                            Spacer()
-                            HStack(spacing: 8) {
-                                Image(currentAppIconPreviewName)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 28, height: 28)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                                    .shadow(radius: 2, x: 0, y: 1)
-
-                                Text(currentAppIconDisplayName)
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-
-                Section {
-                    Toggle("Sync with iCloud", isOn: $iCloudSyncEnabled)
-                        .onChange(of: iCloudSyncEnabled) { _, newValue in
-                            ICloudSyncManager.shared.isEnabled = newValue
-                        }
-                } header: {
-                    Text("Account")
-                } footer: {
-                    Text("Keeps your home state, local tax, and calculator options in sync across your devices with iCloud. Appearance, accent color, and app icon stay set per-device.")
-                }
-
-                if devModeEnabled || isDebugBuild {
-                    Section("Developer") {
-                        NavigationLink {
-                            DeveloperToolsView()
-                        } label: {
-                            HStack {
-                                Text("Developer Tools")
-                                Spacer()
-                                Text(devModeEnabled ? "On" : "Debug")
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                }
-
-                Section("About") {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text(appVersionString)
-                            .foregroundColor(.secondary)
-                    }
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        versionTapCount += 1
-                        if versionTapCount >= 8 {
-                            devModeEnabled.toggle()
-                            versionTapCount = 0
-                        }
-                    }
-
-                    HStack {
-                        Text("Developer")
-                        Spacer()
-                        Text("Sonnaz Group, LLC")
-                            .foregroundColor(.secondary)
-                    }
-                }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -264,6 +110,163 @@ struct SettingsView: View {
         }
         .preferredColorScheme(appColorScheme)
         .tint(accentColor)
+    }
+
+    // MARK: - Sections
+
+    private var calculatorSection: some View {
+        Section {
+            iconRow("dollarsign.circle.fill", .green) {
+                Toggle("Round to the penny", isOn: $roundToCents)
+            }
+            iconRow("receipt.fill", .orange) {
+                Toggle("Tax the original price", isOn: $taxOnOriginal)
+            }
+            iconRow("location.fill", .blue) {
+                Toggle("Set tax from my location at launch", isOn: $autoDetectStateFromLocation)
+            }
+        } header: {
+            Text("Calculator")
+        } footer: {
+            Text("“Tax the original price” charges sales tax on the price before discounts — most stores tax the discounted price, so leave it off unless you need it. The location option looks up your state's tax each time the app opens; you can always tap Local on the main screen instead.")
+        }
+        .listRowBackground(rowBackground)
+    }
+
+    private var appearanceSection: some View {
+        Section("Appearance") {
+            NavigationLink {
+                AppearanceModeSettingsView()
+            } label: {
+                iconRow("circle.lefthalf.filled", .indigo) {
+                    HStack {
+                        Text("Appearance")
+                        Spacer()
+                        Text(appearanceName)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+
+            NavigationLink {
+                AccentColorSettingsView()
+            } label: {
+                iconRow("paintpalette.fill", .pink) {
+                    HStack {
+                        Text("Accent Color")
+                        Spacer()
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(accentColor)
+                                .frame(width: 14, height: 14)
+                            Text(accentColorName)
+                                .foregroundColor(accentColor)
+                        }
+                    }
+                }
+            }
+
+            NavigationLink {
+                AppIconSettingsView(onDone: {
+                    dismiss()
+                })
+            } label: {
+                HStack(spacing: 12) {
+                    Image(currentAppIconPreviewName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 30, height: 30)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .shadow(radius: 2, x: 0, y: 1)
+                    Text("App Icon")
+                    Spacer()
+                    Text(currentAppIconDisplayName)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+        .listRowBackground(rowBackground)
+    }
+
+    private var accountSection: some View {
+        Section {
+            iconRow("icloud.fill", .cyan) {
+                Toggle("Sync with iCloud", isOn: $iCloudSyncEnabled)
+                    .onChange(of: iCloudSyncEnabled) { _, newValue in
+                        ICloudSyncManager.shared.isEnabled = newValue
+                    }
+            }
+        } header: {
+            Text("Account")
+        } footer: {
+            Text("Keeps your sales-tax choice and calculator options in sync across your devices with iCloud. Appearance, accent color, and app icon stay set per-device.")
+        }
+        .listRowBackground(rowBackground)
+    }
+
+    @ViewBuilder
+    private var developerSection: some View {
+        if devModeEnabled || isDebugBuild {
+            Section("Developer") {
+                NavigationLink {
+                    DeveloperToolsView()
+                } label: {
+                    iconRow("hammer.fill", .gray) {
+                        HStack {
+                            Text("Developer Tools")
+                            Spacer()
+                            Text(devModeEnabled ? "On" : "Debug")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+            .listRowBackground(rowBackground)
+        }
+    }
+
+    private var aboutSection: some View {
+        Section("About") {
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(appVersionString)
+                    .foregroundColor(.secondary)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                versionTapCount += 1
+                if versionTapCount >= 8 {
+                    devModeEnabled.toggle()
+                    versionTapCount = 0
+                }
+            }
+
+            HStack {
+                Text("Developer")
+                Spacer()
+                Text("Sonnaz Group, LLC")
+                    .foregroundColor(.secondary)
+            }
+        }
+        .listRowBackground(rowBackground)
+    }
+
+    // MARK: - Row building blocks
+
+    private var rowBackground: some View {
+        Rectangle().fill(.ultraThinMaterial)
+    }
+
+    private func iconRow(_ systemName: String, _ color: Color, @ViewBuilder content: () -> some View) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 30, height: 30)
+                .background(color.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            content()
+        }
     }
 }
 

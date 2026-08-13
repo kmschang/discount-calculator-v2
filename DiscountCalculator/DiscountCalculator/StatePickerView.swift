@@ -5,7 +5,6 @@ import SwiftUI
 struct StatePickerView: View {
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
-    @AppStorage("localTaxRate") private var localTaxRate: Double = 0
     @Environment(\.colorScheme) private var systemScheme
 
     let selectedCode: String?
@@ -51,7 +50,7 @@ struct StatePickerView: View {
             } header: {
                 Text("Choose a state")
             } footer: {
-                Text("Rates are approximate state base rates. Many areas add city or county tax on top — set a Local tax in Settings to match your receipt.")
+                Text("Rates are approximate state base rates. Many areas add city or county tax on top — after picking, you can edit the rate on the main screen to match your receipt.")
             }
         }
         .listStyle(.insetGrouped)
@@ -61,14 +60,7 @@ struct StatePickerView: View {
     }
 
     private func rateSubtitle(for state: USStateTax) -> String {
-        if state.hasNoStateSalesTax {
-            return "No state sales tax"
-        }
-        if localTaxRate > 0 {
-            let total = state.rate + localTaxRate
-            return "with local tax: \(AppFormat.percent(total))%"
-        }
-        return "State base rate"
+        state.hasNoStateSalesTax ? "No state sales tax" : "State base rate"
     }
 
     @ViewBuilder

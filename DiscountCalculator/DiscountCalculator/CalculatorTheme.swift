@@ -102,9 +102,21 @@ enum AppFormat {
         Locale.current.currency?.identifier ?? "USD"
     }
 
+    static var currencySymbol: String {
+        Locale.current.currencySymbol ?? "$"
+    }
+
     /// Formats a percentage value, dropping the decimals when it's a whole number.
     static func percent(_ value: Double) -> String {
         let isWhole = value.truncatingRemainder(dividingBy: 1) == 0
         return value.formatted(.number.precision(.fractionLength(isWhole ? 0 : 2)))
+    }
+
+    /// Parses user-typed numbers, accepting both "7.25" and "7,25".
+    static func parse(_ text: String) -> Double? {
+        let cleaned = text
+            .trimmingCharacters(in: .whitespaces)
+            .replacingOccurrences(of: ",", with: ".")
+        return Double(cleaned)
     }
 }
