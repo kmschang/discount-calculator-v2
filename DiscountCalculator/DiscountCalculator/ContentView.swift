@@ -1,94 +1,85 @@
 import SwiftUI
 
+/// Root of the app: a single calculator screen (no tab bar), with the info and
+/// settings sheets hanging off the top toolbar and the launch loading screen.
 struct ContentView: View {
-    @State private var selectedTab: Tab = .tab1
+    @State private var store = CalculatorStore()
     @State private var isInfoSheetPresented = false
     @State private var isSettingsSheetPresented = false
     @State private var isShowingLoading = true
 
     @AppStorage("themeColor") private var themeColor: Int = 7
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
+    @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
     @Environment(\.colorScheme) private var systemColorScheme
 
-    enum Tab: String, Hashable {
-        case tab1 = "Tab 1"
-        case tab2 = "Tab 2"
-        case tab3 = "Tab 3"
-    }
-
     init(showLoadingInitially: Bool = true) {
-        _isShowingLoading = State(initialValue: showLoadingInitially)
+        let skipLoading = ProcessInfo.processInfo.arguments.contains("-DemoData")
+        _isShowingLoading = State(initialValue: showLoadingInitially && !skipLoading)
     }
-
-    private var currentTabTitle: String { selectedTab.rawValue }
 
     private var appColorScheme: ColorScheme? {
-        switch appearanceMode {
-        case 1: return .light
-        case 2: return .dark
-        default: return nil
-        }
+        AppTheme.appColorScheme(appearanceMode: appearanceMode)
     }
 
-    private var tabAccentColor: Color {
-        switch themeColor {
-        case 1: return .red
-        case 2: return .orange
-        case 3: return .yellow
-        case 4: return .green
-        case 5: return .blue
-        case 6: return .purple
-        case 7:
-            let effectiveScheme = appColorScheme ?? systemColorScheme
-            return effectiveScheme == .dark ? .white : .black
-        default:
-            return .accentColor
-        }
+    /// The scheme actually on screen — the chosen one, or the device's when the
+    /// user is following the system. Sheets need a concrete value, not a
+    /// preference, to restyle while they're already open.
+    private var effectiveAppColorScheme: ColorScheme {
+        appColorScheme ?? systemColorScheme
+    }
+
+    private var accentColor: Color {
+        AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemColorScheme)
     }
 
     private var mainAppView: some View {
         NavigationStack {
-            TabView(selection: $selectedTab) {
-                BlankTabOneView()
-                    .tabItem { Label("Tab 1", systemImage: "1.circle") }
-                    .tag(Tab.tab1)
-
-                BlankTabTwoView()
-                    .tabItem { Label("Tab 2", systemImage: "2.circle") }
-                    .tag(Tab.tab2)
-
-                BlankTabThreeView()
-                    .tabItem { Label("Tab 3", systemImage: "3.circle") }
-                    .tag(Tab.tab3)
-            }
-            .tint(tabAccentColor)
-            .navigationTitle(currentTabTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button {
-                        isInfoSheetPresented = true
-                    } label: {
-                        Image(systemName: "info.circle")
+            CalculatorView()
+                .tint(accentColor)
+                .navigationTitle("Discount Calculator")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            isInfoSheetPresented = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                        }
+                        .tint(.primary)
                     }
-                    .tint(.primary)
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        isSettingsSheetPresented = true
-                    } label: {
-                        Image(systemName: "gearshape")
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button {
+                            isSettingsSheetPresented = true
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                        .tint(.primary)
                     }
-                    .tint(.primary)
                 }
-            }
-            .sheet(isPresented: $isInfoSheetPresented) {
-                InfoView()
-                    .presentationDragIndicator(.visible)
-            }
-            .sheet(isPresented: $isSettingsSheetPresented) {
-                SettingsView()
-                    .presentationDragIndicator(.visible)
+                .sheet(isPresented: $isInfoSheetPresented) {
+                    InfoView()
+                        .appAppearance(effectiveAppColorScheme)
+                        .presentationDragIndicator(.visible)
+                }
+                .sheet(isPresented: $isSettingsSheetPresented) {
+                    SettingsView()
+                        .appAppearance(effectiveAppColorScheme)
+                        .presentationDragIndicator(.visible)
+                }
+        }
+        .environment(store)
+        .task {
+            guard !AppRuntime.isRunningForPreviews else { return }
+            maybeAutoDetectState()
+        }
+    }
+
+    private func maybeAutoDetectState() {
+        guard autoDetectStateFromLocation else { return }
+        LocationManager.shared.requestStateFromLocation { code in
+            if let code, USStateTax.byCode(code) != nil {
+                store.applyState(code)
             }
         }
     }
@@ -103,6 +94,7 @@ struct ContentView: View {
         }
         .preferredColorScheme(appColorScheme)
         .task {
+            guard !AppRuntime.isRunningForPreviews else { return }
             if isShowingLoading {
                 let delaySeconds = Double.random(in: 1...2)
                 let delayNanoseconds = UInt64(delaySeconds * 1_000_000_000)
@@ -117,17 +109,12 @@ struct ContentView: View {
     }
 }
 
-#Preview("Context View - Light") {
+#Preview("Content - Light") {
     ContentView(showLoadingInitially: false)
         .preferredColorScheme(.light)
 }
 
-#Preview("Context View - Dark") {
+#Preview("Content - Dark") {
     ContentView(showLoadingInitially: false)
-        .preferredColorScheme(.dark)
-}
-
-#Preview("Context View - Loading") {
-    ContentView(showLoadingInitially: true)
         .preferredColorScheme(.dark)
 }
