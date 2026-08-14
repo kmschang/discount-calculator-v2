@@ -75,8 +75,6 @@ final class CalculatorStore {
 
     var itemAmount: Double { max(0, AppFormat.parse(priceText) ?? 0) }
 
-    var hasInput: Bool { !priceText.isEmpty || !discounts.isEmpty }
-
     // MARK: Discounts
 
     var canAddDiscount: Bool { discounts.count < Self.maxDiscounts }
@@ -94,9 +92,12 @@ final class CalculatorStore {
         discounts.removeAll { $0.id == entry.id }
     }
 
+    /// Wipes the whole calculation — price, discounts, and tax. The view may
+    /// then re-detect the tax from location; see `CalculatorView.startOver()`.
     func startOver() {
         priceText = ""
         discounts = []
+        applyState(nil)
     }
 
     // MARK: Tax

@@ -11,6 +11,7 @@ struct CalculatorView: View {
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("roundToCents") private var roundToCents: Bool = true
     @AppStorage("taxOnOriginal") private var taxOnOriginal: Bool = false
+    @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
 
     // Persisted tax choice (survives launches; synced via iCloud KVS).
     @AppStorage("savedTaxRate") private var savedTaxRate: Double = -1
@@ -121,13 +122,14 @@ struct CalculatorView: View {
                     action: copyTotal
                 )
 
+                // Always tappable: the tax is resettable on its own, and it isn't
+                // covered by the price/discount emptiness check.
                 resultAction(
                     systemName: "arrow.counterclockwise",
                     accessibilityLabel: "Start over",
-                    isEnabled: store.hasInput
+                    isEnabled: true
                 ) {
-                    withAnimation(.snappy) { store.startOver() }
-                    focusedField = nil
+                    startOver()
                 }
             }
 
@@ -500,6 +502,19 @@ struct CalculatorView: View {
         }
         if store.taxRatePercent > 0 { return "Using a custom rate. Use Local to restore your state's rate." }
         return "Enter a rate, choose a state, or use your current location."
+    }
+
+    /// Full clean slate: price, discounts, and tax. Always available, since the
+    /// tax alone is worth being able to undo.
+    private func startOver() {
+        withAnimation(.snappy) { store.startOver() }
+        focusedField = nil
+
+        // With location following turned on, an empty tax field is only ever a
+        // transient state — put the local rate straight back.
+        if autoDetectStateFromLocation {
+            detectLocation()
+        }
     }
 
     private func detectLocation() {
