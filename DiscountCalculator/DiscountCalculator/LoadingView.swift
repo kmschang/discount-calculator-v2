@@ -11,7 +11,7 @@ import SwiftUI
 struct LoadingView: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage("themeColor") private var storedThemeColor: Int = 7
+    @AppStorage("themeColor") private var storedThemeColor: Int = 5
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
 
     private let previewThemeColor: Int?

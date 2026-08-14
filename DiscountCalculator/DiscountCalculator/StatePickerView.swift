@@ -3,7 +3,7 @@ import SwiftUI
 /// A searchable list of US states + DC with big, easy-to-tap rows.
 /// Reused both as a sheet (from the Calculate tab) and inline (the Tax by State tab).
 struct StatePickerView: View {
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @Environment(\.colorScheme) private var systemScheme
 

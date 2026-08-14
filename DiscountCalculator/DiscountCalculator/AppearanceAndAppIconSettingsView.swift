@@ -179,7 +179,7 @@ struct AppIconSettingsView: View {
     let onDone: (() -> Void)?
 
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
@@ -502,7 +502,7 @@ private struct AppIconChoice: View {
 struct AppearanceModeSettingsView: View {
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @Environment(\.colorScheme) private var systemColorScheme
 
     private var accentColor: Color {

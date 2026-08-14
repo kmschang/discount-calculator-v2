@@ -38,7 +38,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) var systemColorScheme
 
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
     @AppStorage("roundToCents") private var roundToCents: Bool = true

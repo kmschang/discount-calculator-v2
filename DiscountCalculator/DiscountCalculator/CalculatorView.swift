@@ -7,7 +7,7 @@ struct CalculatorView: View {
     @Environment(CalculatorStore.self) private var store
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("roundToCents") private var roundToCents: Bool = true
     @AppStorage("taxOnOriginal") private var taxOnOriginal: Bool = false

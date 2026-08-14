@@ -8,7 +8,7 @@ struct ContentView: View {
     @State private var isSettingsSheetPresented = false
     @State private var isShowingLoading = true
 
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("autoDetectStateFromLocation") private var autoDetectStateFromLocation: Bool = false
     @Environment(\.colorScheme) private var systemColorScheme

@@ -13,7 +13,7 @@ struct InfoView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @AppStorage("appearanceMode") private var appearanceMode: Int = 0
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
     @AppStorage("suppressExternalLinkWarning") private var suppressExternalLinkWarning: Bool = false

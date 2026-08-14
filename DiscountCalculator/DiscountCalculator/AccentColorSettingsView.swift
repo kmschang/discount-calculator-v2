@@ -12,7 +12,7 @@ import SwiftUI
 struct AccentColorSettingsView: View {
     let onDone: (() -> Void)?
 
-    @AppStorage("themeColor") private var themeColor: Int = 7
+    @AppStorage("themeColor") private var themeColor: Int = 5
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
