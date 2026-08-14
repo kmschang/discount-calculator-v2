@@ -126,11 +126,97 @@ enum AppFormat {
         return value.formatted(.number.precision(.fractionLength(isWhole ? 0 : 2)))
     }
 
+    /// The separator this device's decimal keypad actually produces.
+    static var decimalSeparator: Character {
+        Locale.current.decimalSeparator?.first ?? "."
+    }
+
     /// Parses user-typed numbers, accepting both "7.25" and "7,25".
     static func parse(_ text: String) -> Double? {
         let cleaned = text
             .trimmingCharacters(in: .whitespaces)
             .replacingOccurrences(of: ",", with: ".")
         return Double(cleaned)
+    }
+
+    /// How long a typed number is allowed to get. Applied as the user types so a
+    /// field can never grow past what the layout (and the math) can show.
+    struct NumberLimit {
+        var maxIntegerDigits: Int
+        var maxFractionDigits: Int
+
+        /// Up to 9,999,999.99 — more than any register total needs.
+        static let price = NumberLimit(maxIntegerDigits: 7, maxFractionDigits: 2)
+        /// Room for 100.00% without allowing nonsense like 99999%.
+        static let percentOff = NumberLimit(maxIntegerDigits: 3, maxFractionDigits: 2)
+        /// Dollar discounts are money, so they match the price field.
+        static let amountOff = price
+        /// Same 3-digit cap as a percent discount. The third decimal is kept so
+        /// real rates like 8.375% stay exact.
+        static let taxRate = NumberLimit(maxIntegerDigits: 3, maxFractionDigits: 3)
+
+        /// Keeps digits and at most one decimal separator, capping the digit count
+        /// on each side. Anything else the user types (or pastes) is dropped.
+        func clamped(_ text: String) -> String {
+            var integerDigits = ""
+            var fractionDigits = ""
+            var separator: Character?
+
+            for character in text {
+                if character.isASCII, character.isNumber {
+                    if separator == nil {
+                        if integerDigits.count < maxIntegerDigits {
+                            integerDigits.append(character)
+                        }
+                    } else if fractionDigits.count < maxFractionDigits {
+                        fractionDigits.append(character)
+                    }
+                } else if character == AppFormat.decimalSeparator {
+                    // Only the first separator counts, and only when this field
+                    // actually accepts a fractional part.
+                    if separator == nil, maxFractionDigits > 0 {
+                        separator = character
+                    }
+                }
+                // Any other character — including the grouping mark in a pasted
+                // "1,234.56" — is dropped, so the value keeps its magnitude.
+            }
+
+            guard let separator else { return integerDigits }
+            return "\(integerDigits)\(separator)\(fractionDigits)"
+        }
+    }
+}
+
+// MARK: - Appearance
+
+extension View {
+    /// Forces a resolved light/dark scheme onto this view.
+    ///
+    /// `preferredColorScheme` alone is not enough for sheets: UIKit won't restyle
+    /// an already-presented sheet when the preference changes, so switching
+    /// appearance from inside Settings would repaint the screen behind it and
+    /// leave the sheet itself on the old scheme. Overriding the environment value
+    /// too makes the presented content follow along immediately.
+    func appAppearance(_ scheme: ColorScheme) -> some View {
+        self
+            .preferredColorScheme(scheme)
+            .environment(\.colorScheme, scheme)
+    }
+}
+
+extension View {
+    /// Enforces a digit limit on a text field.
+    ///
+    /// The clamp deliberately runs *after* the typed value reaches `text`, not
+    /// inside a filtering `Binding`: a binding that silently rejects a keystroke
+    /// leaves the source of truth unchanged, so SwiftUI sees nothing to update
+    /// and the rejected character stays visible in the field. Writing the
+    /// shortened value back is a real change, so the field redraws without it.
+    func digitLimit(_ limit: AppFormat.NumberLimit, text: Binding<String>) -> some View {
+        onChange(of: text.wrappedValue) { _, newValue in
+            let clamped = limit.clamped(newValue)
+            if clamped != newValue { text.wrappedValue = clamped }
+        }
     }
 }

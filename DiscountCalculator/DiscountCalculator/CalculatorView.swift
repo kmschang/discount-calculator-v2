@@ -75,21 +75,6 @@ struct CalculatorView: View {
             .background(Color.clear)
             .animation(.snappy, value: store.discounts)
         }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                VStack(spacing: 0) {
-                    Button("Done") { focusedField = nil }
-                        .font(.headline)
-
-                    // Keep this outside the button so the keyboard accessory's
-                    // glass control ends before the keypad begins.
-                    Color.clear
-                        .frame(height: 7)
-                        .accessibilityHidden(true)
-                }
-            }
-        }
         .onAppear(perform: restoreSavedTax)
         .onChange(of: store.taxRateText) {
             store.reconcileTaxSource()
@@ -255,6 +240,7 @@ struct CalculatorView: View {
                     .font(.system(size: 30, weight: .bold, design: .rounded))
                     .multilineTextAlignment(.trailing)
                     .minimumScaleFactor(0.7)
+                    .digitLimit(.price, text: store.priceText)
             }
             .padding(.horizontal, 16)
             .frame(height: 62)
@@ -348,6 +334,12 @@ struct CalculatorView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 92)
+            .onChange(of: entry.wrappedValue.kind) { _, newKind in
+                // A dollar amount can hold more digits than a percent, so trim
+                // anything the new kind wouldn't have allowed you to type.
+                let limit: AppFormat.NumberLimit = newKind == .percent ? .percentOff : .amountOff
+                entry.valueText.wrappedValue = limit.clamped(entry.valueText.wrappedValue)
+            }
 
             HStack(spacing: 5) {
                 if entry.wrappedValue.kind == .amount {
@@ -363,6 +355,7 @@ struct CalculatorView: View {
                 .focused($focusedField, equals: .discount(entry.wrappedValue.id))
                 .font(.system(.title3, design: .rounded).weight(.semibold))
                 .multilineTextAlignment(.trailing)
+                .digitLimit(entry.wrappedValue.limit, text: entry.valueText)
 
                 if entry.wrappedValue.kind == .percent {
                     Text("%")
@@ -449,6 +442,7 @@ struct CalculatorView: View {
                         .focused($focusedField, equals: .tax)
                         .font(.system(.title3, design: .rounded).weight(.semibold))
                         .multilineTextAlignment(.trailing)
+                        .digitLimit(.taxRate, text: store.taxRateText)
                     Text("%")
                         .font(.headline)
                         .foregroundStyle(.secondary)

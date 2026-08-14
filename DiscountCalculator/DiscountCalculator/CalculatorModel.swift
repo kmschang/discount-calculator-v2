@@ -19,6 +19,12 @@ struct DiscountEntry: Identifiable, Hashable {
         guard let v = AppFormat.parse(valueText), v > 0 else { return nil }
         return v
     }
+
+    /// A percent and a dollar amount allow different digit counts, so the limit
+    /// travels with the row's current kind.
+    var limit: AppFormat.NumberLimit {
+        kind == .percent ? .percentOff : .amountOff
+    }
 }
 
 // MARK: - Result of a calculation

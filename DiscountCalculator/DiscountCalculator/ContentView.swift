@@ -22,6 +22,13 @@ struct ContentView: View {
         AppTheme.appColorScheme(appearanceMode: appearanceMode)
     }
 
+    /// The scheme actually on screen — the chosen one, or the device's when the
+    /// user is following the system. Sheets need a concrete value, not a
+    /// preference, to restyle while they're already open.
+    private var effectiveAppColorScheme: ColorScheme {
+        appColorScheme ?? systemColorScheme
+    }
+
     private var accentColor: Color {
         AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemColorScheme)
     }
@@ -52,10 +59,12 @@ struct ContentView: View {
                 }
                 .sheet(isPresented: $isInfoSheetPresented) {
                     InfoView()
+                        .appAppearance(effectiveAppColorScheme)
                         .presentationDragIndicator(.visible)
                 }
                 .sheet(isPresented: $isSettingsSheetPresented) {
                     SettingsView()
+                        .appAppearance(effectiveAppColorScheme)
                         .presentationDragIndicator(.visible)
                 }
         }

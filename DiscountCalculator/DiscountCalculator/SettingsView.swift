@@ -53,10 +53,6 @@ struct SettingsView: View {
         AppTheme.accentColor(themeColor: themeColor, appearanceMode: appearanceMode, systemScheme: systemColorScheme)
     }
 
-    private var appColorScheme: ColorScheme? {
-        AppTheme.appColorScheme(appearanceMode: appearanceMode)
-    }
-
     private var appearanceName: String {
         switch appearanceMode {
         case 1: return "Light"
@@ -140,7 +136,8 @@ struct SettingsView: View {
                 }
             }
         }
-        .preferredColorScheme(appColorScheme)
+        // The presenting sheet supplies the resolved scheme (see `appAppearance`);
+        // re-declaring a preference here would fight it while the sheet is open.
         .tint(accentColor)
         .alert(item: $presentedHelp) { help in
             Alert(
