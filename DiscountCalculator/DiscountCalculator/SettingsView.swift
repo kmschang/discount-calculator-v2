@@ -8,11 +8,7 @@ struct SettingsView: View {
         case roundToPenny
         case taxOriginalPrice
         case launchLocation
-        case appearance
-        case accentColor
-        case appIcon
         case iCloudSync
-        case developerTools
 
         var id: String { rawValue }
 
@@ -21,11 +17,7 @@ struct SettingsView: View {
             case .roundToPenny: return "Round to the Penny"
             case .taxOriginalPrice: return "Tax the Original Price"
             case .launchLocation: return "Set Tax from My Location"
-            case .appearance: return "Appearance"
-            case .accentColor: return "Accent Color"
-            case .appIcon: return "App Icon"
             case .iCloudSync: return "Sync with iCloud"
-            case .developerTools: return "Developer Tools"
             }
         }
 
@@ -37,16 +29,8 @@ struct SettingsView: View {
                 return "Calculates sales tax from the price before discounts. Most stores tax the discounted price, so leave this off unless you specifically need it."
             case .launchLocation:
                 return "Uses your device location when the app opens to select your state's base sales-tax rate. You can still choose a state or enter a rate manually."
-            case .appearance:
-                return "Choose whether the app follows your device appearance or always uses Light or Dark Mode."
-            case .accentColor:
-                return "Chooses the highlight color used sparingly for controls, icons, and selected items throughout the app."
-            case .appIcon:
-                return "Changes the icon shown for Discount Calculator on your Home Screen. Light and dark variants are included."
             case .iCloudSync:
                 return "Keeps your sales-tax choice and calculator options in sync across your devices. Appearance, accent color, and app icon remain specific to each device."
-            case .developerTools:
-                return "Opens diagnostics and testing controls intended for development and troubleshooting."
             }
         }
     }
@@ -213,59 +197,59 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section("Appearance") {
-            HStack(spacing: 12) {
-                settingHelpButton(
-                    systemName: "circle.lefthalf.filled",
-                    color: .indigo,
-                    help: .appearance
-                )
-                Spacer(minLength: 8)
-                NavigationLink {
-                    AppearanceModeSettingsView()
-                } label: {
+            NavigationLink {
+                AppearanceModeSettingsView()
+            } label: {
+                HStack(spacing: 12) {
+                    iconTile("circle.lefthalf.filled", color: .indigo)
+                    Text("Appearance")
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
                     Text(appearanceName)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Open Appearance settings")
             }
+            .accessibilityLabel("Appearance, \(appearanceName)")
 
-            HStack(spacing: 12) {
-                settingHelpButton(
-                    systemName: "paintpalette.fill",
-                    color: .pink,
-                    help: .accentColor
-                )
-                Spacer(minLength: 8)
-                NavigationLink {
-                    AccentColorSettingsView()
-                } label: {
+            NavigationLink {
+                AccentColorSettingsView()
+            } label: {
+                HStack(spacing: 12) {
+                    iconTile("paintpalette.fill", color: .pink)
+                    Text("Accent Color")
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
                     HStack(spacing: 6) {
                         Circle()
                             .fill(accentColor)
                             .frame(width: 14, height: 14)
                         Text(accentColorName)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Open Accent Color settings")
             }
+            .accessibilityLabel("Accent Color, \(accentColorName)")
 
-            HStack(spacing: 12) {
-                appIconHelpButton
-                Spacer(minLength: 8)
-                NavigationLink {
-                    AppIconSettingsView(onDone: {
-                        dismiss()
-                    })
-                } label: {
+            NavigationLink {
+                AppIconSettingsView(onDone: {
+                    dismiss()
+                })
+            } label: {
+                HStack(spacing: 12) {
+                    Image(currentAppIconPreviewName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 30, height: 30)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .shadow(radius: 2, x: 0, y: 1)
+                    Text("App Icon")
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
                     Text(currentAppIconDisplayName)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                 }
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityLabel("Open App Icon settings")
             }
+            .accessibilityLabel("App Icon, \(currentAppIconDisplayName)")
         }
         .listRowBackground(rowBackground)
     }
@@ -293,23 +277,21 @@ struct SettingsView: View {
     private var developerSection: some View {
         if devModeEnabled || isDebugBuild {
             Section("Developer") {
-                HStack(spacing: 12) {
-                    settingHelpButton(
-                        systemName: "hammer.fill",
-                        color: .gray,
-                        help: .developerTools
-                    )
-                    .layoutPriority(1)
-                    Spacer(minLength: 8)
-                    NavigationLink {
-                        DeveloperToolsView()
-                    } label: {
+                NavigationLink {
+                    DeveloperToolsView()
+                } label: {
+                    HStack(spacing: 12) {
+                        iconTile("hammer.fill", color: .gray)
+                        Text("Developer Tools")
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                        Spacer(minLength: 8)
                         Text(devModeEnabled ? "On" : "Debug")
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
                     }
-                    .fixedSize(horizontal: true, vertical: false)
-                    .accessibilityLabel("Open Developer Tools")
                 }
+                .accessibilityLabel("Developer Tools, \(devModeEnabled ? "On" : "Debug")")
             }
             .listRowBackground(rowBackground)
         }
@@ -361,27 +343,6 @@ struct SettingsView: View {
                 Text(help.title)
                     .foregroundStyle(.primary)
                     .multilineTextAlignment(.leading)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
-        .tint(.primary)
-        .accessibilityHint("Shows a description of this setting")
-    }
-
-    private var appIconHelpButton: some View {
-        Button {
-            presentedHelp = .appIcon
-        } label: {
-            HStack(spacing: 12) {
-                Image(currentAppIconPreviewName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 30, height: 30)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .shadow(radius: 2, x: 0, y: 1)
-                Text(SettingHelp.appIcon.title)
-                    .foregroundStyle(.primary)
             }
             .contentShape(Rectangle())
         }

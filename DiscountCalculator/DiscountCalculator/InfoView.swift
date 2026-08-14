@@ -73,12 +73,16 @@ struct InfoView: View {
             .navigationTitle("About")
             .navigationBarTitleDisplayMode(.inline)
             .alert("Leave Discount Calculator?", isPresented: $showExternalLinkWarningAlert) {
-                Button("Continue") { openPendingExternalLink() }
-                Button("Continue and Don't Show Again") {
+                Button("Continue", role: .destructive) {
+                    openPendingExternalLink()
+                }
+                Button("Continue and Don't Show Again", role: .destructive) {
                     suppressExternalLinkWarning = true
                     openPendingExternalLink()
                 }
-                Button("Cancel", role: .cancel) { clearPendingExternalLink() }
+                Button("Cancel", role: .cancel) {
+                    clearPendingExternalLink()
+                }
             } message: {
                 Text("You are opening an external link outside the app:\n\n\(pendingExternalURL?.absoluteString ?? "")")
             }
