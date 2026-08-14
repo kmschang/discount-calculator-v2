@@ -75,13 +75,6 @@ struct SettingsView: View {
         }
     }
 
-    private var currentAppIconPreviewName: String {
-        discountCalculatorLogoName(
-            appearance: discountCalculatorLogoAppearance(for: systemColorScheme),
-            color: discountCalculatorLogoColor(forAppIconName: selectedAppIconName)
-        )
-    }
-
     private var accentColorName: String {
         switch themeColor {
         case 1: return "Red"
@@ -233,12 +226,15 @@ struct SettingsView: View {
                 })
             } label: {
                 HStack(spacing: 12) {
-                    Image(currentAppIconPreviewName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 30, height: 30)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .shadow(radius: 2, x: 0, y: 1)
+                    // Same drawn preview as the App Icon screen, so the row and
+                    // the picker can't disagree about what the icon looks like.
+                    DiscountCalculatorIconPreview(
+                        style: .style(for: selectedAppIconName),
+                        appearance: systemColorScheme == .dark ? .dark : .light,
+                        cornerRadius: 8,
+                        logoPadding: 3
+                    )
+                    .frame(width: 30, height: 30)
                     Text("App Icon")
                         .foregroundStyle(.primary)
                     Spacer(minLength: 8)

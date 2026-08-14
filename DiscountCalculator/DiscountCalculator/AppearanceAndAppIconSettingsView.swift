@@ -1,12 +1,177 @@
 //
 //  AppearanceAndAppIconSettingsView.swift
-//  DayCalculator
+//  DiscountCalculator
 //
-//  Created by Kyle Schang on 12/10/25.
+//  Appearance + app-icon pickers. Icon previews are drawn from the single
+//  transparent logo asset plus a gradient per color, so adding or retuning a
+//  color needs no new artwork — the shipped .appiconset files stay the source
+//  of truth for the icons iOS actually installs.
 //
 
 import SwiftUI
 import UIKit
+
+// MARK: - App icon styles
+
+private extension Color {
+    init(appIconHex value: UInt32, opacity: Double = 1) {
+        self.init(
+            .sRGB,
+            red: Double((value >> 16) & 0xFF) / 255,
+            green: Double((value >> 8) & 0xFF) / 255,
+            blue: Double(value & 0xFF) / 255,
+            opacity: opacity
+        )
+    }
+}
+
+/// One selectable icon color. Gradient stops were sampled from the real
+/// `*AppIcon.appiconset` artwork so a preview matches the installed icon.
+struct DiscountCalculatorAppIconStyle: Identifiable {
+    let id: String
+    let displayName: String
+    /// The alternate icon name as configured in the app's Info.plist.
+    let iconName: String?
+
+    static let all: [DiscountCalculatorAppIconStyle] = [
+        DiscountCalculatorAppIconStyle(id: "Red", displayName: "Red", iconName: "RedAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "Orange", displayName: "Orange", iconName: "OrangeAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "Yellow", displayName: "Yellow", iconName: "YellowAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "Green", displayName: "Green", iconName: "GreenAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "Blue", displayName: "Blue", iconName: "BlueAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "Purple", displayName: "Purple", iconName: "PurpleAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "Black", displayName: "Black", iconName: "BlackAppIcon"),
+        DiscountCalculatorAppIconStyle(id: "White", displayName: "White", iconName: "WhiteAppIcon")
+    ]
+
+    static func style(for iconName: String) -> DiscountCalculatorAppIconStyle {
+        all.first(where: { iconName == ($0.iconName ?? "BlueAppIcon") })
+            ?? all.first(where: { $0.id == "Blue" })
+            ?? all[0]
+    }
+
+    private var gradientDarkColor: Color {
+        switch id {
+        case "Red": return Color(appIconHex: 0xAB0101)
+        case "Orange": return Color(appIconHex: 0xFC5D01)
+        case "Yellow": return Color(appIconHex: 0xF5B801)
+        case "Green": return Color(appIconHex: 0x017709)
+        case "Blue": return Color(appIconHex: 0x311EA9)
+        case "Purple": return Color(appIconHex: 0x6E0192)
+        // Sampled white is a flat #FCFCFC, which would read as a blank tile, so
+        // the low stop is darkened just enough to show the icon's shape.
+        case "White": return Color(appIconHex: 0xC7C7C7)
+        case "Black": return Color(appIconHex: 0x090809)
+        default: return Color(appIconHex: 0x311EA9)
+        }
+    }
+
+    private var gradientLightColor: Color {
+        switch id {
+        case "Red": return Color(appIconHex: 0xFE2627)
+        case "Orange": return Color(appIconHex: 0xFE8E01)
+        case "Yellow": return Color(appIconHex: 0xFEFC67)
+        case "Green": return Color(appIconHex: 0x07D309)
+        case "Blue": return Color(appIconHex: 0x537FC9)
+        case "Purple": return Color(appIconHex: 0xCA5FEE)
+        case "White": return Color(appIconHex: 0xFFFFFF)
+        case "Black": return Color(appIconHex: 0x252526)
+        default: return Color(appIconHex: 0x537FC9)
+        }
+    }
+
+    var iconGradient: LinearGradient {
+        LinearGradient(
+            colors: [gradientDarkColor, gradientLightColor],
+            startPoint: .bottomLeading,
+            endPoint: .topTrailing
+        )
+    }
+
+    /// On a dark tile a near-black icon would disappear, so Black lifts to gray.
+    var darkAppearanceIconGradient: LinearGradient {
+        LinearGradient(
+            colors: id == "Black"
+                ? [Color(appIconHex: 0x333333), Color(appIconHex: 0x585858)]
+                : [gradientDarkColor, gradientLightColor],
+            startPoint: .bottomLeading,
+            endPoint: .topTrailing
+        )
+    }
+
+    /// Flat color for chips and selection accents.
+    var representativeColor: Color {
+        switch id {
+        case "White": return Color(appIconHex: 0xE8E8E8)
+        case "Black": return Color(appIconHex: 0x2E2E2E)
+        default: return gradientLightColor
+        }
+    }
+}
+
+enum AppIconPreviewAppearance {
+    case light
+    case dark
+}
+
+/// Recreates the alternate icon previews from the one transparent logo asset.
+/// The actual app icons remain in their required appiconsets.
+struct DiscountCalculatorIconPreview: View {
+    let style: DiscountCalculatorAppIconStyle
+    let appearance: AppIconPreviewAppearance
+    var cornerRadius: CGFloat = 22
+    var logoPadding: CGFloat = 12
+
+    private var logo: some View {
+        Image("DiscountCalculatorLogo(Transparent)")
+            .resizable()
+            .scaledToFit()
+            .padding(logoPadding)
+    }
+
+    var body: some View {
+        ZStack {
+            if appearance == .light {
+                // The white base keeps light gradient stops deterministic
+                // instead of letting the surrounding UI show through.
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.white)
+
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(style.iconGradient)
+
+                logo
+            } else {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color(white: 0.15), Color(white: 0.015)],
+                            startPoint: .topTrailing,
+                            endPoint: .bottomLeading
+                        )
+                    )
+
+                ZStack {
+                    logo
+
+                    // Multiplication colors the white logo face while retaining
+                    // the gray highlights and shading baked into the asset.
+                    style.darkAppearanceIconGradient
+                        .mask { logo }
+                        .blendMode(.multiply)
+                }
+                .compositingGroup()
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .strokeBorder(Color.white.opacity(appearance == .dark ? 0.12 : 0.32), lineWidth: 0.75)
+        }
+        .shadow(color: .black.opacity(appearance == .dark ? 0.34 : 0.16), radius: 8, x: 0, y: 5)
+        .accessibilityHidden(true)
+    }
+}
 
 // MARK: - App Icon Settings
 
@@ -14,71 +179,53 @@ struct AppIconSettingsView: View {
     let onDone: (() -> Void)?
 
     @AppStorage("selectedAppIconName") private var selectedAppIconName: String = "BlueAppIcon"
+    @AppStorage("themeColor") private var themeColor: Int = 7
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
+
     @State private var iconChangeErrorMessage: String?
     @State private var isChangingIcon: Bool = false
+
+    /// iOS occasionally reports the icon service as busy; a few spaced retries
+    /// clear that without bothering the user.
+    private static let iconChangeRetryDelays: [TimeInterval] = [0.4, 0.9, 1.6]
+
+    private let options = DiscountCalculatorAppIconStyle.all
 
     init(onDone: (() -> Void)? = nil) {
         self.onDone = onDone
     }
-    
-    struct AppIconOption: Identifiable {
-        let id: String
-        let displayName: String
-        let previewImageNameLight: String
-        let previewImageNameDark: String
-        /// The alternate icon name as configured in the app's Info.plist.
-        /// Use nil for the primary/default icon.
-        let iconName: String?
+
+    private var selectedOption: DiscountCalculatorAppIconStyle {
+        DiscountCalculatorAppIconStyle.style(for: selectedAppIconName)
     }
-    
-    private let options: [AppIconOption] = [
-        AppIconOption(id: "Red",    displayName: "Red",    previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Red"),    previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Red"),    iconName: "RedAppIcon"),
-        AppIconOption(id: "Orange", displayName: "Orange", previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Orange"), previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Orange"), iconName: "OrangeAppIcon"),
-        AppIconOption(id: "Yellow", displayName: "Yellow", previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Yellow"), previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Yellow"), iconName: "YellowAppIcon"),
-        AppIconOption(id: "Green",  displayName: "Green",  previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Green"),  previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Green"),  iconName: "GreenAppIcon"),
-        AppIconOption(id: "Blue",   displayName: "Blue",   previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Blue"),   previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Blue"),   iconName: "BlueAppIcon"),
-        AppIconOption(id: "Purple", displayName: "Purple", previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Purple"), previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Purple"), iconName: "PurpleAppIcon"),
-        AppIconOption(id: "Black",  displayName: "Black",  previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "Black"),  previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "Black"),  iconName: "BlackAppIcon"),
-        AppIconOption(id: "White",  displayName: "White",  previewImageNameLight: discountCalculatorLogoName(appearance: .light, color: "White"),  previewImageNameDark: discountCalculatorLogoName(appearance: .dark, color: "White"),  iconName: "WhiteAppIcon")
-    ]
-    
-    private var selectedOption: AppIconOption {
-        // Match current persisted selection and fall back to Blue if something is out of sync.
-        if let match = options.first(where: { selectedAppIconName == ($0.iconName ?? "BlueAppIcon") }) {
-            return match
-        }
-        if let blue = options.first(where: { $0.iconName == "BlueAppIcon" }) {
-            return blue
-        }
-        return options[0]
-    }
-    
-    // Theme color from Settings
-    @AppStorage("themeColor") private var themeColor: Int = 7
-    @Environment(\.colorScheme) var colorScheme
-    
+
     private var accentColor: Color {
         AppTheme.paletteColor(themeColor: themeColor, colorScheme: colorScheme)
     }
-    
+
     var body: some View {
-        VStack(spacing: 0) {
-            SelectedAppIconShowcase(
-                option: selectedOption,
-                accentColor: accentColor
-            )
-            .padding(.horizontal, 18)
-            .padding(.top, 8)
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 22) {
+                AppIconSelectedShowcase(
+                    option: selectedOption,
+                    accentColor: accentColor,
+                    isChanging: isChangingIcon
+                )
 
-            Divider().overlay(colorScheme == .dark ? .white.opacity(0.25) : .black.opacity(0.25))
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Choose your icon")
+                        .font(.headline)
 
-            ScrollView(showsIndicators: false) {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
+                    Text("Select a color below. iOS automatically uses its matching light or dark version.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 74, maximum: 104), spacing: 12)], spacing: 12) {
                     ForEach(options) { option in
-                        AppIconPreviewCard(
+                        AppIconChoice(
                             option: option,
                             isSelected: selectedAppIconName == (option.iconName ?? "BlueAppIcon"),
                             accentColor: accentColor
@@ -87,10 +234,12 @@ struct AppIconSettingsView: View {
                         }
                     }
                 }
-                .padding(.horizontal, 18)
-                .padding(.bottom, 20)
-                .padding(.top, 15)
             }
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 28)
+            .disabled(isChangingIcon)
+            .opacity(isChangingIcon ? 0.7 : 1)
         }
         .navigationTitle("App Icon")
         .navigationBarTitleDisplayMode(.inline)
@@ -107,6 +256,7 @@ struct AppIconSettingsView: View {
                 }
                 .tint(.primary)
                 .accessibilityLabel("Done")
+                .disabled(isChangingIcon)
             }
         }
         .onAppear {
@@ -125,11 +275,12 @@ struct AppIconSettingsView: View {
             Text(iconChangeErrorMessage ?? "Unknown error")
         }
     }
-    
-    private func applyIcon(_ option: AppIconOption) {
-        let iconNameToSet = option.iconName
-        let desiredIconName = iconNameToSet ?? "BlueAppIcon"
-        
+
+    // MARK: Applying the icon
+
+    private func applyIcon(_ option: DiscountCalculatorAppIconStyle) {
+        let desiredIconName = option.iconName ?? "BlueAppIcon"
+
         guard UIApplication.shared.supportsAlternateIcons else {
             iconChangeErrorMessage = "This device does not support alternate app icons."
             return
@@ -137,236 +288,214 @@ struct AppIconSettingsView: View {
 
         guard !isChangingIcon else { return }
         guard selectedAppIconName != desiredIconName else { return }
+        guard scenePhase == .active else {
+            iconChangeErrorMessage = "Discount Calculator needs to be active before iOS can change the app icon. Please try again in a moment."
+            syncSelectedIconFromSystem()
+            return
+        }
 
         isChangingIcon = true
-        
+        iconChangeErrorMessage = nil
+        setAlternateIcon(option, retryDelays: Self.iconChangeRetryDelays)
+    }
+
+    private func setAlternateIcon(_ option: DiscountCalculatorAppIconStyle, retryDelays: [TimeInterval]) {
+        guard scenePhase == .active else {
+            isChangingIcon = false
+            iconChangeErrorMessage = "Discount Calculator needs to be active before iOS can change the app icon. Please try again in a moment."
+            syncSelectedIconFromSystem()
+            return
+        }
+
+        let iconNameToSet = option.iconName
+        let desiredIconName = iconNameToSet ?? "BlueAppIcon"
+
         UIApplication.shared.setAlternateIconName(iconNameToSet) { error in
             DispatchQueue.main.async {
-                isChangingIcon = false
+                if let error {
+                    if isTransientIconChangeError(error), let retryDelay = retryDelays.first {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                            setAlternateIcon(option, retryDelays: Array(retryDelays.dropFirst()))
+                        }
+                        return
+                    }
 
-                if let error = error {
-                    print("Error setting alternate icon: \(error.localizedDescription)")
-                    iconChangeErrorMessage = error.localizedDescription
-                    syncSelectedIconFromSystem()
+                    finishIconChangeFailure(error)
                     return
                 }
 
+                isChangingIcon = false
                 selectedAppIconName = desiredIconName
             }
         }
     }
 
+    /// The system owns which icon is actually installed, so trust it over the
+    /// stored preference whenever the two disagree.
     private func syncSelectedIconFromSystem() {
         selectedAppIconName = UIApplication.shared.alternateIconName ?? "BlueAppIcon"
     }
-}
 
-private struct SelectedAppIconShowcase: View {
-    let option: AppIconSettingsView.AppIconOption
-    let accentColor: Color
+    private func finishIconChangeFailure(_ error: Error) {
+        isChangingIcon = false
+        syncSelectedIconFromSystem()
 
-    var body: some View {
-        VStack(spacing: 10) {
-            VStack(spacing: 2) {
-                Text("Preview")
-                    .font(.headline)
-
-                Text("Light & Dark variants")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-            .frame(maxWidth: .infinity)
-
-            HStack(spacing: 14) {
-                LabeledIconPreview(
-                    label: "Light",
-                    imageName: option.previewImageNameLight
-                )
-
-                LabeledIconPreview(
-                    label: "Dark",
-                    imageName: option.previewImageNameDark
-                )
-            }
-            .frame(maxWidth: .infinity)
-
-            Text("This screen shows both versions so you can see how the icon looks in each appearance.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.top, 2)
+        if isTransientIconChangeError(error) {
+            // NSPOSIXErrorDomain 35 ("Resource temporarily unavailable") from
+            // LSIconAlertManager — a known iOS 26.1+ regression where the icon
+            // service wedges until the device is rebooted, so retrying can't help.
+            iconChangeErrorMessage = "iOS could not change the app icon right now. Restarting your device usually clears this — then try again."
+        } else if isMissingIconFileError(error) {
+            // NSCocoaErrorDomain 4/260 ("The file doesn't exist.") even though the
+            // icons are verifiably in the bundle: after an app update, iOS 26 can
+            // keep a stale icon registration pointing at the old install path.
+            iconChangeErrorMessage = "This copy of the app is missing its alternate icons — a delivery issue rather than a problem with your device. It should be resolved in the next app update."
+        } else {
+            iconChangeErrorMessage = error.localizedDescription
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(.ultraThinMaterial)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .strokeBorder(accentColor.opacity(0.25), lineWidth: 1)
-        )
+    }
+
+    private func isMissingIconFileError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == NSCocoaErrorDomain
+            && (nsError.code == NSFileNoSuchFileError || nsError.code == NSFileReadNoSuchFileError)
+    }
+
+    private func isTransientIconChangeError(_ error: Error) -> Bool {
+        let nsError = error as NSError
+        let searchableText = [
+            nsError.localizedDescription,
+            nsError.localizedFailureReason,
+            nsError.localizedRecoverySuggestion
+        ]
+            .compactMap { $0 }
+            .joined(separator: " ")
+            .lowercased()
+
+        return searchableText.contains("temporarily unavailable")
+            || (searchableText.contains("resource") && searchableText.contains("unavailable"))
     }
 }
 
-private struct LabeledIconPreview: View {
+private struct AppIconSelectedShowcase: View {
+    let option: DiscountCalculatorAppIconStyle
+    let accentColor: Color
+    let isChanging: Bool
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Current Icon")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Text(option.displayName)
+                        .font(.title2.weight(.bold))
+                }
+
+                Spacer()
+
+                if isChanging {
+                    ProgressView()
+                        .tint(accentColor)
+                        .accessibilityLabel("Changing app icon")
+                } else {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.title2)
+                        .foregroundStyle(accentColor)
+                }
+            }
+
+            HStack(spacing: 16) {
+                AppIconAppearancePreview(label: "Light", option: option, appearance: .light)
+                AppIconAppearancePreview(label: "Dark", option: option, appearance: .dark)
+            }
+        }
+        .padding(18)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 10)
+    }
+}
+
+private struct AppIconAppearancePreview: View {
     let label: String
-    let imageName: String
+    let option: DiscountCalculatorAppIconStyle
+    let appearance: AppIconPreviewAppearance
 
     var body: some View {
         VStack(spacing: 8) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(.secondarySystemBackground).opacity(0.85),
-                                Color(.systemBackground).opacity(0.65)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                    )
-
-                Image(imageName)
-                    .resizable()
-                    .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .padding(12)
-            }
-            .frame(width: 120, height: 120)
+            DiscountCalculatorIconPreview(
+                style: option,
+                appearance: appearance,
+                cornerRadius: 24,
+                logoPadding: 13
+            )
+            .aspectRatio(1, contentMode: .fit)
 
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule(style: .continuous)
-                        .fill(.thinMaterial)
-                )
-                .overlay(
-                    Capsule(style: .continuous)
-                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                )
         }
         .frame(maxWidth: .infinity)
     }
 }
 
-private struct AppIconPreviewCard: View {
-    let option: AppIconSettingsView.AppIconOption
+private struct AppIconChoice: View {
+    let option: DiscountCalculatorAppIconStyle
     let isSelected: Bool
     let accentColor: Color
-    let onTap: () -> Void
-    
+    let action: () -> Void
+
     var body: some View {
-        Button(action: onTap) {
+        Button(action: action) {
             VStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .overlay(
-                            LinearGradient(
-                                colors: [
-                                    Color(.systemBackground).opacity(0.35),
-                                    Color(.secondarySystemBackground).opacity(0.55)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        )
-                        .shadow(color: Color.black.opacity(0.16), radius: 8, x: 0, y: 4)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                .strokeBorder(
-                                    isSelected ? accentColor : Color.primary.opacity(0.2),
-                                    lineWidth: isSelected ? 2 : 1
-                                )
-                        )
-                    
-                    HStack(spacing: 12) {
-                        VStack(spacing: 8) {
-                            Image(option.previewImageNameLight)
-                                .resizable()
-                                .aspectRatio(1, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .frame(width: 56, height: 56)
-
-                            Text("Light")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(.thinMaterial)
-                                )
-                                .overlay(
-                                    Capsule(style: .continuous)
-                                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                                )
-                        }
-                        .frame(maxWidth: .infinity)
-
-                        VStack(spacing: 8) {
-                            Image(option.previewImageNameDark)
-                                .resizable()
-                                .aspectRatio(1, contentMode: .fit)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                                .frame(width: 56, height: 56)
-
-                            Text("Dark")
-                                .font(.caption2.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule(style: .continuous)
-                                        .fill(.thinMaterial)
-                                )
-                                .overlay(
-                                    Capsule(style: .continuous)
-                                        .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
-                                )
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 12)
-                    .frame(maxWidth: .infinity)
-                }
+                DiscountCalculatorIconPreview(
+                    style: option,
+                    appearance: .light,
+                    cornerRadius: 16,
+                    logoPadding: 7
+                )
+                .frame(width: 64, height: 64)
                 .overlay(alignment: .topTrailing) {
                     if isSelected {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.title3)
+                            .font(.body)
                             .symbolRenderingMode(.palette)
-                            // First color is the checkmark, second is the filled circle.
                             .foregroundStyle(.white, accentColor)
-                            // Push it slightly outside the card so it doesn't cover the previews.
-                            .offset(x: 4, y: -4)
+                            .offset(x: 5, y: -5)
                             .accessibilityLabel("Selected")
                     }
                 }
 
+                Text(option.displayName)
+                    .font(.caption.weight(isSelected ? .bold : .semibold))
+                    .foregroundStyle(isSelected ? .primary : .secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
-            .padding(4)
+            .padding(10)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .strokeBorder(isSelected ? accentColor : Color.primary.opacity(0.10), lineWidth: isSelected ? 2 : 1)
+            }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(option.displayName)
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
 
 #Preview("App Icon Settings") {
     NavigationStack {
         AppIconSettingsView()
-            .background(Color(.systemGroupedBackground))
     }
 }
-
 
 // MARK: - Appearance Mode Settings
 
@@ -470,7 +599,7 @@ struct AppearancePreviewCard: View {
                                     lineWidth: isSelected ? 2 : 1
                                 )
                         )
-                    
+
                     // Neutral ambient light, matching the app's mostly
                     // colorless canvas. The selected border carries the accent.
                     Circle()
@@ -487,7 +616,7 @@ struct AppearancePreviewCard: View {
                         .frame(width: 80, height: 80)
                         .blur(radius: 18)
                         .offset(x: -24, y: -28)
-                    
+
                     Circle()
                         .fill(
                             LinearGradient(
